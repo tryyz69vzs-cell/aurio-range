@@ -1,0 +1,30 @@
+{
+  "brand_name": "Aurio",
+  "colors": {
+    "primary": "#2E5AAC",
+    "accent": "#14B8A6",
+    "bg": "#0F172A",
+    "surface": "#1E293B",
+    "text": "#F8FAFC",
+    "muted": "#94A3B8"
+  },
+  "font_stack": "Pretendard, Inter, system-ui, sans-serif",
+  "logo_svg": "aurio_mark.svg",
+  "button": {
+    "radius": "10px",
+    "padding": "12px 20px",
+    "weight": 600
+  },
+  "email_layout": {
+    "max_width": "600px",
+    "header_height": "64px"
+  },
+  "login_layout": {
+    "card_width": "400px",
+    "logo_size": "48px"
+  },
+  "tone": {
+    "greeting": "안녕하세요, {username}님",
+    "signoff": "Aurio 보안팀 드림"
+  }
+}

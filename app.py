@@ -1,0 +1,381 @@
+"""Streamlit control room for one-shot, session-isolated Aurio matches."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import streamlit as st
+
+from engine.match import run_match
+from safety.constitution import SafetyViolation
+from safety.guard import run_startup_checks, verify_config_hash
+
+
+st.set_page_config(
+    page_title="Aurio Range",
+    page_icon="◈",
+    layout="wide",
+    initial_sidebar_state="auto",
+)
+
+st.markdown(
+    """
+<style>
+:root{--ink:#f8fafc;--muted:#93a4ba;--line:rgba(148,163,184,.14);--teal:#14b8a6;--blue:#3b6fca}
+html,body,[class*="css"]{font-family:Pretendard,Inter,system-ui,sans-serif}
+.stApp{background:
+ radial-gradient(circle at 78% -10%,rgba(46,90,172,.25),transparent 34rem),
+ radial-gradient(circle at 18% 12%,rgba(20,184,166,.10),transparent 28rem),
+ #07111f;color:var(--ink)}
+[data-testid="stSidebar"]{background:#0a1525;border-right:1px solid var(--line)}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p{color:#b8c5d6}
+.block-container{padding-top:2rem;max-width:1480px}
+.hero{position:relative;overflow:hidden;padding:32px 34px;margin-bottom:20px;border:1px solid var(--line);
+ border-radius:22px;background:linear-gradient(145deg,rgba(21,37,60,.96),rgba(10,23,39,.96));
+ box-shadow:0 22px 70px rgba(0,0,0,.22)}
+.hero:after{content:"";position:absolute;width:260px;height:260px;right:-70px;top:-105px;border:1px solid rgba(20,184,166,.25);border-radius:50%;box-shadow:0 0 0 36px rgba(46,90,172,.08),0 0 0 76px rgba(20,184,166,.035)}
+.kicker{font-size:11px;letter-spacing:.2em;color:#5eead4;font-weight:800;margin-bottom:12px}
+.hero h1{position:relative;margin:0 0 9px;font-size:clamp(34px,5vw,58px);line-height:1;letter-spacing:-.045em}
+.hero p{position:relative;max-width:760px;margin:0;color:#a8b7ca;font-size:15px;line-height:1.7}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
+.badge{font-size:11px;font-weight:700;color:#d8e4f3;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.035)}
+.badge.safe{color:#6ee7d7;border-color:rgba(20,184,166,.3);background:rgba(20,184,166,.08)}
+.section-label{margin:28px 0 10px;color:#7f91aa;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+div[data-testid="stMetric"]{padding:19px 20px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,rgba(22,38,61,.9),rgba(12,26,44,.9));box-shadow:0 12px 36px rgba(0,0,0,.13)}
+div[data-testid="stMetricLabel"]{color:#92a4ba}
+div[data-testid="stMetricValue"]{letter-spacing:-.03em}
+.score-red div[data-testid="stMetric"]{border-top:2px solid #f97366}
+.score-blue div[data-testid="stMetric"]{border-top:2px solid #4e8df5}
+.quiet-card{padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:rgba(13,28,47,.72);color:#a9b8ca;font-size:13px;line-height:1.65}
+.status-ok{padding:12px 14px;border-radius:12px;background:rgba(20,184,166,.10);border:1px solid rgba(20,184,166,.25);color:#67e8d5;font-size:12px;font-weight:700}
+.status-bad{padding:12px 14px;border-radius:12px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:#fca5a5;font-size:12px;font-weight:700}
+.timeline-row{display:grid;grid-template-columns:58px 175px 1fr;gap:12px;align-items:center;padding:9px 12px;margin:5px 0;border-left:2px solid rgba(20,184,166,.35);background:rgba(255,255,255,.025);border-radius:0 10px 10px 0}
+.timeline-step{color:#5eead4;font-family:monospace;font-size:12px}.timeline-event{font-size:12px;font-weight:750;color:#d8e5f3}.timeline-meta{font-size:11px;color:#778ba5}
+.stButton>button{border:0;border-radius:11px;background:linear-gradient(120deg,#2e5aac,#14b8a6);color:white;font-weight:800;min-height:44px;box-shadow:0 10px 25px rgba(20,184,166,.18)}
+.stButton>button:hover{color:white;border:0;filter:brightness(1.08)}
+div[data-testid="stDataFrame"]{border:1px solid var(--line);border-radius:13px;overflow:hidden}
+[data-baseweb="tab-list"]{gap:4px;background:rgba(10,22,38,.75);padding:5px;border-radius:13px}
+[data-baseweb="tab"]{height:40px;border-radius:9px;padding:0 16px}
+.footer-note{margin-top:28px;padding:18px 0;border-top:1px solid var(--line);font-size:11px;color:#667991}
+@media(max-width:700px){.block-container{padding:1rem}.hero{padding:25px 22px}.timeline-row{grid-template-columns:44px 1fr}.timeline-meta{grid-column:2}}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+
+def safety_status() -> tuple[bool, str]:
+    try:
+        verify_config_hash()
+        run_startup_checks()
+        return True, "해시 잠금과 안전 불변식이 모두 정상입니다."
+    except SafetyViolation as exc:
+        return False, str(exc)
+
+
+safe, safety_message = safety_status()
+
+with st.sidebar:
+    st.markdown("### ◈ Aurio Range")
+    st.caption("폐쇄형 계정탈취 방어 실험실")
+    st.markdown(
+        f'<div class="{"status-ok" if safe else "status-bad"}">'
+        f'{"● SAFETY GATE · PASS" if safe else "● SAFETY GATE · BLOCKED"}<br>'
+        f'<span style="font-weight:500;opacity:.78">{safety_message}</span></div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("#### 경기 구성")
+    difficulty_label = st.selectbox(
+        "난이도",
+        ["Mixed", "Easy", "Medium", "Hard"],
+        help="Mixed는 세 난이도를 모두 실행합니다.",
+    )
+    strictness = st.select_slider(
+        "탐지 엄격도",
+        options=["permissive", "balanced", "strict"],
+        value="balanced",
+    )
+    profiles = st.multiselect(
+        "합성 사용자",
+        ["cautious", "average", "careless"],
+        default=["cautious", "average", "careless"],
+    )
+    fixed_seed = st.toggle("고정 시드 사용", value=True)
+    seed_value = st.number_input(
+        "시드",
+        min_value=1,
+        max_value=2_147_483_646,
+        value=20260731,
+        step=1,
+        disabled=not fixed_seed,
+    )
+    run_clicked = st.button(
+        "경기 실행",
+        width="stretch",
+        disabled=not safe or not profiles,
+        type="primary",
+    )
+    st.caption("각 실행은 이 브라우저 세션의 독립 인메모리 DB에서만 처리됩니다.")
+
+if run_clicked:
+    with st.spinner("폐쇄형 시뮬레이션을 실행하고 있습니다…"):
+        st.session_state["match_result"] = run_match(
+            difficulty=difficulty_label.lower(),
+            strictness=strictness,
+            profiles=profiles,
+            seed=int(seed_value) if fixed_seed else None,
+        )
+
+st.markdown(
+    f"""
+<section class="hero">
+  <div class="kicker">CLOSED DEFENSE SIMULATION · SEED-SAFE</div>
+  <h1>Aurio <span style="color:#5eead4">Range</span></h1>
+  <p>공식 알림과 외형이 같은 합성 위조 알림을 시스템 신호로 구분하고,
+  사용자의 검증·경고 이탈·제출 행동과 Blue의 사전 탐지·사후 봉쇄를 단계별로 관찰합니다.</p>
+  <div class="badges">
+    <span class="badge safe">● 안전 게이트 통과</span>
+    <span class="badge">NO NETWORK EGRESS</span>
+    <span class="badge">NO LLM</span>
+    <span class="badge">IN-MEMORY SQLITE</span>
+    <span class="badge">NO CREDENTIAL SECRETS</span>
+  </div>
+</section>
+""",
+    unsafe_allow_html=True,
+)
+
+if "match_result" not in st.session_state:
+    left, right = st.columns([1.35, 1])
+    with left:
+        st.markdown('<div class="section-label">READY TO RUN</div>', unsafe_allow_html=True)
+        st.markdown("### 첫 경기를 실행해 보세요")
+        st.write(
+            "왼쪽에서 난이도와 탐지 엄격도를 선택한 뒤 **경기 실행**을 누르면 "
+            "Red, Blue, User, Judge가 한 번의 폐쇄형 경기를 진행합니다."
+        )
+    with right:
+        st.markdown('<div class="section-label">SAFETY MODEL</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="quiet-card">실제 이메일·SNS·외부 도메인에 연결하지 않습니다. '
+            '제출은 텍스트가 아닌 행동 플래그로만 기록되고, 경기가 끝나면 DB 연결도 닫힙니다.</div>',
+            unsafe_allow_html=True,
+        )
+    st.stop()
+
+result: dict[str, Any] = st.session_state["match_result"]
+scores = result["scores"]
+metrics = result["metrics"]
+
+st.markdown('<div class="section-label">MATCH OUTCOME</div>', unsafe_allow_html=True)
+score_col1, score_col2, seed_col = st.columns([1, 1, 1.4])
+with score_col1:
+    st.markdown('<div class="score-red">', unsafe_allow_html=True)
+    st.metric("RED SCORE", f"{scores['red']:.0f}")
+    st.markdown("</div>", unsafe_allow_html=True)
+with score_col2:
+    st.markdown('<div class="score-blue">', unsafe_allow_html=True)
+    st.metric("BLUE SCORE", f"{scores['blue']:.0f}")
+    st.markdown("</div>", unsafe_allow_html=True)
+with seed_col:
+    st.metric(
+        "MATCH SEED",
+        str(result["seed"]),
+        f"{metrics['n_official']} official · {metrics['n_forged']} forged",
+        delta_color="off",
+    )
+
+overview_tab, behavior_tab, compare_tab, timeline_tab, audit_tab = st.tabs(
+    ["개요", "행동 분석", "신호 비교", "이벤트 타임라인", "감사·미리보기"]
+)
+
+with overview_tab:
+    st.markdown('<div class="section-label">RAW METRICS</div>', unsafe_allow_html=True)
+    labels = [
+        ("false_positive", "False Positive"),
+        ("friction", "Friction"),
+        ("false_negative", "False Negative"),
+        ("warning_escape", "Warning Escape"),
+        ("harm_click", "Harm · Click"),
+        ("harm_submit", "Harm · Submit"),
+        ("credential_compromise", "Synthetic Compromise"),
+        ("containment_success", "Containment"),
+        ("user_saved", "User Saved"),
+    ]
+    for start in range(0, len(labels), 3):
+        cols = st.columns(3)
+        for col, (key, label) in zip(cols, labels[start : start + 3]):
+            col.metric(label, metrics[key])
+    latency_a, latency_b = st.columns(2)
+    latency_a.metric(
+        "평균 탐지 단계",
+        "—" if metrics["avg_detection_steps"] is None
+        else f"{metrics['avg_detection_steps']:.1f}",
+    )
+    latency_b.metric(
+        "평균 봉쇄 단계",
+        "—" if metrics["avg_containment_steps"] is None
+        else f"{metrics['avg_containment_steps']:.1f}",
+    )
+    st.info("지연값은 참고 지표입니다. MVP의 Red·Blue 점수에는 포함되지 않습니다.")
+
+    st.markdown('<div class="section-label">BY DIFFICULTY</div>', unsafe_allow_html=True)
+    st.dataframe(
+        result["difficulty_metrics"],
+        width="stretch",
+        hide_index=True,
+        column_config={
+            "difficulty": "난이도",
+            "delivered": "허용",
+            "warned": "경고",
+            "quarantined": "격리",
+            "harm_click": "클릭 피해",
+            "harm_submit": "제출 피해",
+        },
+    )
+
+    operational = [
+        {
+            "메시지": row["id"],
+            "프로필": row["profile"],
+            "표시 발신자": row["display_sender_name"],
+            "인증 주소": row["auth_sender_address"],
+            "위험점수": row["risk_total"],
+            "밴드": row["band"],
+            "사전조치": row["pre_delivery_action"],
+            "사후대응": row["post_action_response"] or "—",
+            "전달상태": row["delivery_status"],
+        }
+        for row in result["messages"]
+    ]
+    st.markdown('<div class="section-label">BLUE OPERATIONS</div>', unsafe_allow_html=True)
+    st.caption("이 표에는 정답 데이터가 없습니다.")
+    st.dataframe(operational, width="stretch", hide_index=True)
+
+with behavior_tab:
+    st.markdown('<div class="section-label">USER STATE MACHINE</div>', unsafe_allow_html=True)
+    profile_rows = []
+    for row in result["profile_metrics"]:
+        profile_rows.append(
+            {
+                "프로필": row["profile"],
+                "검증률": row["verify_rate"],
+                "신고율": row["report_rate"],
+                "클릭률": row["click_rate"],
+                "제출률": row["submit_rate"],
+                "경고 이탈률": row["warning_escape_rate"],
+            }
+        )
+    st.dataframe(
+        profile_rows,
+        width="stretch",
+        hide_index=True,
+        column_config={
+            key: st.column_config.ProgressColumn(
+                key, min_value=0.0, max_value=1.0, format="%.0f%%"
+            )
+            for key in ("검증률", "신고율", "클릭률", "제출률", "경고 이탈률")
+        },
+    )
+    st.markdown("#### 상태 전환 기록")
+    transition_rows = [
+        {
+            "step": row["step_index"],
+            "message": row["message_id"],
+            "profile": row["profile"],
+            "event": row["action"],
+            "transition": f"{row['from_state']} → {row['to_state']}",
+        }
+        for row in result["user_actions"]
+    ]
+    st.dataframe(transition_rows, width="stretch", hide_index=True)
+
+with compare_tab:
+    st.markdown('<div class="section-label">HARD · SIDE BY SIDE</div>', unsafe_allow_html=True)
+    if not result["signal_comparison"]:
+        st.warning("Hard 시나리오를 포함해 실행하면 공식·위조 비교가 표시됩니다.")
+    else:
+        pair = result["signal_comparison"][0]
+        official_col, forged_col = st.columns(2)
+        with official_col:
+            st.markdown("#### 공식 알림")
+            st.iframe(pair["official"]["rendered_html"], height=530)
+        with forged_col:
+            st.markdown("#### 합성 위조 알림")
+            st.iframe(pair["forged"]["rendered_html"], height=530)
+        st.caption(
+            "두 메시지는 같은 브랜드킷과 고정 템플릿으로 렌더됩니다. "
+            "Red는 HTML·CSS·JavaScript를 생성하지 않습니다."
+        )
+        signal_rows = []
+        for signal in pair["official"]["signals"]:
+            signal_rows.append(
+                {
+                    "신호": signal,
+                    "공식 값": pair["official"]["signals"][signal]["value"],
+                    "공식 점수": pair["official"]["signals"][signal]["score"],
+                    "위조 값": pair["forged"]["signals"][signal]["value"],
+                    "위조 점수": pair["forged"]["signals"][signal]["score"],
+                    "Hard 구분력": (
+                        "동일"
+                        if signal in {"official_event_record", "ingress_channel"}
+                        else "독립 신호"
+                    ),
+                }
+            )
+        st.dataframe(signal_rows, width="stretch", hide_index=True)
+        st.success(
+            "Hard에서는 official_event_record와 ingress_channel이 양쪽 동일합니다. "
+            "핵심 차이는 sender_auth, signature_validity, destination_ownership입니다."
+        )
+
+with timeline_tab:
+    st.markdown('<div class="section-label">STEP-INDEXED EVENT QUEUE</div>', unsafe_allow_html=True)
+    for event in result["events"]:
+        meta = []
+        if event["message_id"] is not None:
+            meta.append(f"message {event['message_id']}")
+        if event["account_id"] is not None:
+            meta.append(f"account {event['account_id']}")
+        st.markdown(
+            f'<div class="timeline-row"><span class="timeline-step">#{event["step_index"]:03d}</span>'
+            f'<span class="timeline-event">{event["event_type"]}</span>'
+            f'<span class="timeline-meta">{" · ".join(meta) or "match scope"}</span></div>',
+            unsafe_allow_html=True,
+        )
+
+with audit_tab:
+    judge_tab, preview_tab, safety_tab = st.tabs(
+        ["Judge 평가", "비대화형 페이지", "안전 이벤트"]
+    )
+    with judge_tab:
+        st.caption("정답과 correct 값은 Judge 영역에서만 결합됩니다.")
+        st.dataframe(result["judge_evaluations"], width="stretch", hide_index=True)
+    with preview_tab:
+        if result["previews"]:
+            selected = st.selectbox(
+                "합성 위조 페이지",
+                options=[row["message_id"] for row in result["previews"]],
+                format_func=lambda value: f"메시지 #{value}",
+            )
+            preview = next(
+                row for row in result["previews"] if row["message_id"] == selected
+            )
+            st.iframe(preview["static_html"], height=520)
+            st.caption(
+                "폼·입력칸·제출 버튼은 정적 플레이스홀더로 치환됐습니다. "
+                "자유 텍스트 입력이나 자격증명 수집 기능은 없습니다."
+            )
+        else:
+            st.info("현재 실행에 표시할 위조 페이지가 없습니다.")
+    with safety_tab:
+        if result["safety_events"]:
+            st.dataframe(result["safety_events"], width="stretch", hide_index=True)
+        else:
+            st.success("안전 이벤트 없음 · 모든 구조화 Red 산출물이 검증을 통과했습니다.")
+
+st.markdown(
+    '<div class="footer-note">AURIO RANGE · CLOSED SYNTHETIC RESEARCH ENVIRONMENT · '
+    '각 경기는 세션별 인메모리 SQLite 연결에서 실행되고 종료 즉시 연결이 닫힙니다.</div>',
+    unsafe_allow_html=True,
+)

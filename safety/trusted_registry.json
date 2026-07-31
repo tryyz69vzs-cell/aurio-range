@@ -1,0 +1,58 @@
+{
+  "official_email_domain": "aurio.test",
+  "official_senders": [
+    "no-reply@aurio.test",
+    "security@aurio.test"
+  ],
+  "official_hosts": [
+    "app.aurio.test",
+    "help.aurio.test"
+  ],
+  "official_routes": [
+    "/security/alerts",
+    "/login",
+    "/account/sessions"
+  ],
+  "authorized_relays": [
+    "relay.aurio-mail.test"
+  ],
+  "allowed_reserved_tlds": [
+    ".test",
+    ".local"
+  ],
+  "internal_capture_path": "/_sim/capture",
+  "signature_prefix": "AURIO-SIG-",
+  "forbidden_tlds": [
+    ".com",
+    ".net",
+    ".org",
+    ".kr",
+    ".io",
+    ".co",
+    ".app",
+    ".dev",
+    ".xyz",
+    ".me",
+    ".info"
+  ],
+  "forbidden_brand_tokens": [
+    "instagram",
+    "facebook",
+    "meta",
+    "google",
+    "naver",
+    "kakao",
+    "apple",
+    "twitter",
+    "x-corp",
+    "tiktok",
+    "line",
+    "daum"
+  ],
+  "forbidden_schemes": [
+    "ftp",
+    "file",
+    "data",
+    "javascript"
+  ]
+}

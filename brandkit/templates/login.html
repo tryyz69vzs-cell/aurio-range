@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{margin:0;padding:28px 16px;background:#eef2f7;color:#162033;font-family:{{ font_stack }}}
+    .card{max-width:{{ card_width }};margin:0 auto;padding:30px;border-radius:18px;background:#fff;box-shadow:0 18px 48px rgba(15,23,42,.16)}
+    .mark{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,{{ primary }},{{ accent }});color:#fff;font-weight:800;font-size:21px}
+    h1{margin:18px 0 8px;font-size:23px}p{margin:0 0 22px;line-height:1.6;color:#667085}
+    .label{display:block;margin:13px 0 6px;color:#344054;font-size:13px;font-weight:700}
+    .placeholder{box-sizing:border-box;width:100%;height:42px;border:1px solid #d0d5dd;border-radius:9px;background:#f9fafb}
+    .submit-preview{width:100%;box-sizing:border-box;margin-top:18px;padding:13px;border-radius:10px;background:{{ primary }};color:#fff;font-weight:750;text-align:center}
+    .safe{margin-top:18px;text-align:center;font-size:11px;color:#98a2b3}
+  </style>
+</head>
+<body>
+  <section class="card">
+    <div class="mark">A</div>
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_body }}</p>
+    <div aria-label="비대화형 합성 제출 미리보기">
+      <div class="label">계정 식별자</div>
+      <div class="placeholder"></div>
+      <div class="label">접근 확인 항목</div>
+      <div class="placeholder"></div>
+      <div class="submit-preview">{{ action_label }}</div>
+    </div>
+    <div class="safe">Aurio Range · synthetic preview</div>
+  </section>
+</body>
+</html>

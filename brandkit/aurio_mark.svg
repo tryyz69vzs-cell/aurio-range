@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aurio">
+  <defs>
+    <linearGradient id="a" x1="8" y1="8" x2="56" y2="56">
+      <stop stop-color="#2E5AAC"/>
+      <stop offset="1" stop-color="#14B8A6"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#a)"/>
+  <path d="M18 45 29.4 17h5.2L46 45h-7l-2.2-6H27.2L25 45h-7Zm11.5-12h5l-2.5-7-2.5 7Z" fill="#fff"/>
+</svg>
