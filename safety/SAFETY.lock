@@ -2,6 +2,9 @@
   "brandkit/renderer.py": "4e2ed7e9b9164cf5cd812c0c329b971f7b314aa33794dfa24b72627039eb0487",
   "brandkit/templates/email.html": "286ced363942512963274387b089ed86d071df7220877471619885628841cede",
   "brandkit/templates/login.html": "c73cba25903ab79483e0c592512b9d7ebedf17f1f0809b11bc56d9fc6d382b9e",
-  "safety/constitution.py": "1fdb73320cbe7cfa83845993f95d52b131ff18f1aac82b5c692a6826af41bfe0",
+  "reporting/models.py": "99470a5e5e3f8e3a01bdd15e425322a13aab229493f11f30ab1863709cb89108",
+  "reporting/sanitizer.py": "996764490ace30ba420975ba1e0148cecbf91493b6b79fb30a5a22a263d5f3ea",
+  "reporting/telegram_sender.py": "958199971f21d644e494edad1811da78be5f37c9255ca045debb9dba0981f696",
+  "safety/constitution.py": "e06aa7179e4918b01caa12d33017c92aadd5a804c08c3571a493c9a0386f5bf4",
   "safety/trusted_registry.json": "d0a884624e540f5e3b7d44e3d9a92f5b24ed3d289ff6afe9fc484e81f5e02a15"
 }

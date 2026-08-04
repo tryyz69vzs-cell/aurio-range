@@ -16,34 +16,60 @@ PROFILE_NAMES = {
 }
 
 
-def create_accounts(
+def create_scenario_account(
     connection: sqlite3.Connection,
     match_id: int,
-    profiles: list[str],
-) -> list[sqlite3.Row]:
-    for profile in profiles:
-        if profile not in PROFILE_NAMES:
-            raise ValueError(f"알 수 없는 프로필: {profile}")
-        connection.execute(
-            """INSERT INTO accounts(
-                 match_id, username, email, profile, mfa_enabled, status, session_state
-               ) VALUES(?,?,?,?,?,?,?)""",
-            (
-                match_id,
-                PROFILE_NAMES[profile],
-                f"{profile}@users.aurio.test",
-                profile,
-                1 if profile == "cautious" else 0,
-                "active",
-                "normal",
-            ),
-        )
-    connection.commit()
-    return list(
-        connection.execute(
-            "SELECT * FROM accounts WHERE match_id=? ORDER BY id", (match_id,)
-        )
+    profile: str,
+    scenario_key: str,
+) -> sqlite3.Row:
+    """One fresh account per scenario so no prior response can pollute metrics."""
+    if profile not in PROFILE_NAMES:
+        raise ValueError(f"알 수 없는 프로필: {profile}")
+    cursor = connection.execute(
+        """INSERT INTO accounts(
+             match_id, username, email, profile, scenario_key,
+             mfa_enabled, status, session_state
+           ) VALUES(?,?,?,?,?,?,?,?)""",
+        (
+            match_id,
+            PROFILE_NAMES[profile],
+            f"{profile}-{scenario_key}@users.aurio.test",
+            profile,
+            scenario_key,
+            1 if profile == "cautious" else 0,
+            "active",
+            "normal",
+        ),
     )
+    connection.commit()
+    return connection.execute(
+        "SELECT * FROM accounts WHERE id=?", (cursor.lastrowid,)
+    ).fetchone()
+
+
+def classify_submission_target(
+    connection: sqlite3.Connection,
+    registry: Mapping[str, Any],
+    message_id: int,
+) -> str:
+    """Platform-observable destination class. Never reads scenario ground truth."""
+    row = connection.execute(
+        "SELECT link_destination FROM messages WHERE id=?", (message_id,)
+    ).fetchone()
+    if row is None:
+        raise KeyError(message_id)
+    parsed = urlparse(str(row["link_destination"]))
+    owned = (
+        parsed.scheme == "https"
+        and parsed.hostname in registry["official_hosts"]
+        and parsed.path in registry["official_routes"]
+    )
+    if owned:
+        return "official_owned"
+    capture = connection.execute(
+        "SELECT 1 FROM phish_pages WHERE message_id=? LIMIT 1", (message_id,)
+    ).fetchone()
+    return "internal_capture" if capture is not None else "synthetic_unowned"
 
 
 def create_official_event(

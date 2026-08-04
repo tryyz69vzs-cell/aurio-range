@@ -28,13 +28,16 @@ RED_CLICK = {"easy": 2, "medium": 3, "hard": 4}
 RED_SUBMIT = {"easy": 3, "medium": 5, "hard": 7}
 
 SCORE_COEFFICIENTS = {
-    "red_compromise": 3,
+    "red_credential_exposure": 3,
+    "red_takeover_success": 5,
     "red_warning_escape": 4,
     "red_safety_discard": -5,
     "blue_quarantine": 4,
     "blue_warn_abort": 3,
     "blue_warn_escape": 1,
     "blue_containment": 3,
+    "blue_takeover_prevented": 2,
+    "blue_overreaction": -4,
     "blue_false_positive": -8,
     "blue_false_negative": -3,
     "blue_friction": -1,

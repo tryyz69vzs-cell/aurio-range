@@ -220,14 +220,31 @@ def test_schema_contains_only_behavior_flags_and_no_account_secret():
         account_columns = {row["name"] for row in table_columns(connection, "accounts")}
         assert "credential_token" not in account_columns
         capture = table_columns(connection, "capture_events")
+        names = {row["name"] for row in capture}
         flags = {
             "attempted_username",
             "attempted_password",
             "valid_synthetic_credentials_submitted",
             "submitted_to_phish",
+            "credential_exposure",
+            "takeover_success",
         }
-        assert {row["name"] for row in capture} & flags == flags
-        assert all(row["type"].upper() == "INTEGER" for row in capture)
+        assert names & flags == flags
+        types = {row["name"]: row["type"].upper() for row in capture}
+        assert all(types[flag] == "INTEGER" for flag in flags)
+        # Submit-time snapshots are labels, never credential material.
+        snapshot = {
+            "submission_target",
+            "account_status_at_submit",
+            "session_state_at_submit",
+        }
+        assert names & snapshot == snapshot
+        assert all(types[field] == "TEXT" for field in snapshot)
+        assert not any(
+            token in name
+            for name in names
+            for token in ("password_value", "secret", "plaintext", "credential_token")
+        )
     finally:
         connection.close()
 

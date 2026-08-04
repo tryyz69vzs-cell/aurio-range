@@ -59,8 +59,10 @@ def _risk_fixture():
     )
     connection.execute(
         """INSERT INTO accounts(
-             id,match_id,username,email,profile,mfa_enabled,status,session_state
-           ) VALUES(1,1,'민서','cautious@users.aurio.test','cautious',1,'active','anomalous')"""
+             id,match_id,username,email,profile,scenario_key,
+             mfa_enabled,status,session_state
+           ) VALUES(1,1,'민서','cautious@users.aurio.test','cautious',
+                    'cautious-hard',1,'active','anomalous')"""
     )
     connection.execute(
         """INSERT INTO official_events(
@@ -134,6 +136,10 @@ def _manual_case(
     actions: tuple[str, ...] = (),
     capture: bool = False,
     contained: bool = False,
+    submission_target: str = "internal_capture",
+    status_at_submit: str = "active",
+    session_at_submit: str = "normal",
+    post_response: str | None = None,
 ):
     connection = create_match_database()
     connection.execute(
@@ -145,8 +151,10 @@ def _manual_case(
     session = "revoked" if contained else "normal"
     connection.execute(
         """INSERT INTO accounts(
-             id,match_id,username,email,profile,mfa_enabled,status,session_state
-           ) VALUES(1,1,'민서','cautious@users.aurio.test','cautious',1,?,?)""",
+             id,match_id,username,email,profile,scenario_key,
+             mfa_enabled,status,session_state
+           ) VALUES(1,1,'민서','cautious@users.aurio.test','cautious',
+                    'cautious-hard',1,?,?)""",
         (status, session),
     )
     delivery = {
@@ -165,12 +173,14 @@ def _manual_case(
                     'subject','body','html',0,?)""",
         (delivery,),
     )
+    if post_response is None:
+        post_response = "contained" if contained else "observed"
     connection.execute(
         """INSERT INTO blue_assessments(
              message_id,risk_total,band,pre_delivery_action,signals_json,
-             assessment_step,response_step
-           ) VALUES(1,10,'LOW',?,'{}',2,8)""",
-        (prediction,),
+             assessment_step,response_step,post_action_response
+           ) VALUES(1,10,'LOW',?,'{}',2,8,?)""",
+        (prediction, post_response),
     )
     forged = int(origin == "forged")
     connection.execute(
@@ -201,12 +211,25 @@ def _manual_case(
             (int(contained), 8 if contained else None),
         )
     if capture:
+        to_phish = int(submission_target == "internal_capture")
+        exposure = to_phish
+        takeover = int(
+            exposure
+            and status_at_submit == "active"
+            and session_at_submit not in {"revoked", "stepup_required"}
+        )
         connection.execute(
             """INSERT INTO capture_events(
-                 match_id,message_id,account_id,attempted_username,
-                 attempted_password,valid_synthetic_credentials_submitted,
-                 submitted_to_phish,step_index
-               ) VALUES(1,1,1,1,1,1,1,5)"""
+                 match_id,message_id,account_id,submission_target,
+                 account_status_at_submit,session_state_at_submit,
+                 attempted_username,attempted_password,
+                 valid_synthetic_credentials_submitted,submitted_to_phish,
+                 credential_exposure,takeover_success,step_index
+               ) VALUES(1,1,1,?,?,?,1,1,1,?,?,?,5)""",
+            (
+                submission_target, status_at_submit, session_at_submit,
+                to_phish, exposure, takeover,
+            ),
         )
     events = [
         (0, "MESSAGE_CREATED"),
@@ -240,7 +263,7 @@ def _manual_case(
         ("forged", "allow", (), False, False, {"false_negative": 1}),
         ("forged", "warn", ("WARN_IGNORED", "USER_CLICK"), False, False, {"warning_escape": 1, "user_harm_click": 1}),
         ("forged", "allow", ("USER_CLICK",), False, False, {"user_harm_click": 1, "user_harm_submit": 0}),
-        ("forged", "allow", ("USER_CLICK", "USER_SUBMIT"), True, False, {"user_harm_submit": 1, "credential_compromise": 1}),
+        ("forged", "allow", ("USER_CLICK", "USER_SUBMIT"), True, False, {"user_harm_submit": 1, "credential_exposure": 1, "takeover_success": 1}),
         ("forged", "warn", ("USER_CLICK", "USER_SUBMIT"), True, True, {"containment_success": 1}),
         ("forged", "allow", ("USER_REPORT",), False, False, {"user_saved": 1, "false_negative": 1}),
     ],

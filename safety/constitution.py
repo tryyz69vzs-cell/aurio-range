@@ -11,13 +11,24 @@ SAFETY_INVARIANTS = {
     "S1": "Every synthetic host and mail domain ends in .test or .local.",
     "S2": "Public top-level domains are denied.",
     "S3": "Real service tokens are denied in host and mail identifiers.",
-    "S4": "All runtime packages contain no network-egress imports.",
+    "S4": (
+        "Simulation packages (engine, safety, brandkit, app) contain no "
+        "network-egress imports."
+    ),
     "S5": "Submission is represented only by state flags; no executable form exists.",
     "S6": "No credential secret value exists in storage, memory, logs, or UI.",
     "S7": "Unsafe structured Red output is discarded.",
-    "S8": "The safety policy and registry are hash-locked.",
+    "S8": "The safety policy, registry, and delivery boundary are hash-locked.",
     "S9": "A failed invariant prevents match startup.",
     "S10": "Only a human may run the relock utility.",
+    "S11": (
+        "Only the approved reporting module may egress, only to the fixed "
+        "Telegram API host, and only with a sanitized report object."
+    ),
+    "S12": (
+        "Simulation packages never import the reporting package, so Red, Blue, "
+        "User, and Judge cannot reach the delivery path."
+    ),
 }
 
 LOCKED_FILES = (
@@ -26,7 +37,13 @@ LOCKED_FILES = (
     "brandkit/renderer.py",
     "brandkit/templates/email.html",
     "brandkit/templates/login.html",
+    "reporting/models.py",
+    "reporting/sanitizer.py",
+    "reporting/telegram_sender.py",
 )
+
+SIMULATION_PACKAGES = ("engine", "safety", "brandkit")
+
 FORBIDDEN_IMPORTS = (
     "requests",
     "httpx",
@@ -37,6 +54,27 @@ FORBIDDEN_IMPORTS = (
     "anthropic",
     "openai",
     "google.generativeai",
+)
+
+REPORTING_PACKAGE = "reporting"
+REPORTING_EGRESS_MODULE = "reporting/telegram_sender.py"
+TELEGRAM_ALLOWED_HOST = "api.telegram.org"
+
+REPORTING_SENDER_ALLOWED_IMPORTS = frozenset(
+    {
+        "__future__",
+        "hmac",
+        "json",
+        "dataclasses",
+        "typing",
+        "urllib.error",
+        "urllib.parse",
+        "urllib.request",
+        "reporting.formatter",
+        "safety.constitution",
+        "reporting.models",
+        "reporting.sanitizer",
+    }
 )
 
 RED_ALLOWED_KEYS = frozenset(

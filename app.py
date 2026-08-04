@@ -7,6 +7,16 @@ from typing import Any
 import streamlit as st
 
 from engine.match import run_match
+from reporting.delivery import AUTO, MANUAL, plan_delivery
+from reporting.formatter import build_cards, summary_metrics
+from reporting.red_report import build_red_report
+from reporting.telegram_sender import (
+    build_credentials,
+    owner_pin_configured,
+    send_report,
+    telegram_status,
+    verify_owner_pin,
+)
 from safety.constitution import SafetyViolation
 from safety.guard import run_startup_checks, verify_config_hash
 
@@ -40,6 +50,7 @@ html,body,[class*="css"]{font-family:Pretendard,Inter,system-ui,sans-serif}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px}
 .badge{font-size:11px;font-weight:700;color:#d8e4f3;padding:7px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.035)}
 .badge.safe{color:#6ee7d7;border-color:rgba(20,184,166,.3);background:rgba(20,184,166,.08)}
+.badge.blocked{color:#fca5a5;border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.10)}
 .section-label{margin:28px 0 10px;color:#7f91aa;font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
 div[data-testid="stMetric"]{padding:19px 20px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,rgba(22,38,61,.9),rgba(12,26,44,.9));box-shadow:0 12px 36px rgba(0,0,0,.13)}
 div[data-testid="stMetricLabel"]{color:#92a4ba}
@@ -57,6 +68,19 @@ div[data-testid="stDataFrame"]{border:1px solid var(--line);border-radius:13px;o
 [data-baseweb="tab-list"]{gap:4px;background:rgba(10,22,38,.75);padding:5px;border-radius:13px}
 [data-baseweb="tab"]{height:40px;border-radius:9px;padding:0 16px}
 .footer-note{margin-top:28px;padding:18px 0;border-top:1px solid var(--line);font-size:11px;color:#667991}
+.rt-card{padding:18px 18px 6px;margin:12px 0;border:1px solid var(--line);border-radius:16px;background:linear-gradient(150deg,rgba(20,36,58,.92),rgba(11,24,41,.92))}
+.rt-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+.rt-title{font-size:15px;font-weight:800;color:#e6eefa;letter-spacing:-.01em}
+.rt-badge{font-size:10px;font-weight:800;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.rt-success{background:rgba(248,113,113,.14);color:#fca5a5;border:1px solid rgba(248,113,113,.3)}
+.rt-partial{background:rgba(250,204,21,.12);color:#fde68a;border:1px solid rgba(250,204,21,.28)}
+.rt-failure{background:rgba(20,184,166,.12);color:#6ee7d7;border:1px solid rgba(20,184,166,.3)}
+.rt-sub{font-size:11px;color:#8399b4;margin-bottom:12px;font-family:monospace}
+.rt-sec{margin:11px 0 0}
+.rt-sec-title{font-size:10px;font-weight:800;letter-spacing:.13em;color:#5eead4;text-transform:uppercase;margin-bottom:5px}
+.rt-item{font-size:12.5px;line-height:1.65;color:#bccbdd;padding:3px 0 3px 11px;border-left:2px solid rgba(148,163,184,.16)}
+.tg-pill{display:inline-block;font-size:10px;font-weight:800;padding:5px 9px;border-radius:999px;margin-bottom:8px}
+@media(max-width:700px){.rt-card{padding:15px 14px 4px}.rt-item{font-size:12px}}
 @media(max-width:700px){.block-container{padding:1rem}.hero{padding:25px 22px}.timeline-row{grid-template-columns:44px 1fr}.timeline-meta{grid-column:2}}
 </style>
 """,
@@ -71,6 +95,49 @@ def safety_status() -> tuple[bool, str]:
         return True, "해시 잠금과 안전 불변식이 모두 정상입니다."
     except SafetyViolation as exc:
         return False, str(exc)
+
+
+def telegram_secrets() -> dict[str, Any]:
+    """Read [telegram] from st.secrets. Missing secrets must never break the app."""
+    try:
+        section = st.secrets["telegram"]
+    except Exception:
+        return {}
+    try:
+        return dict(section)
+    except Exception:
+        return {}
+
+
+TELEGRAM_RAW = telegram_secrets()
+TELEGRAM_STATE = telegram_status(TELEGRAM_RAW)
+TELEGRAM_STATE_LABEL = {
+    "active": ("활성", "rt-failure"),
+    "inactive": ("비활성", "rt-partial"),
+    "missing": ("설정 누락", "rt-partial"),
+}
+
+
+REPORTING_BADGE = {
+    "active": "REPORTING · TELEGRAM ONLY",
+    "inactive": "REPORTING · OFFLINE",
+    "missing": "REPORTING · OFFLINE",
+}
+
+
+def deliver_report(report, trigger: str) -> None:
+    """Send once. A delivery problem may never break the match result."""
+    try:
+        outcome = send_report(report, build_credentials(TELEGRAM_RAW))
+        st.session_state["telegram_result"] = (outcome.status, outcome.detail)
+    except Exception:
+        st.session_state["telegram_result"] = (
+            "failed",
+            "전송 모듈에서 처리되지 않은 오류가 발생했습니다.",
+        )
+    if trigger == AUTO:
+        # Mark this match as auto-delivered so a rerun cannot repeat it.
+        st.session_state["auto_sent_token"] = st.session_state.get("report_token")
 
 
 safe, safety_message = safety_status()
@@ -117,14 +184,76 @@ with st.sidebar:
     )
     st.caption("각 실행은 이 브라우저 세션의 독립 인메모리 DB에서만 처리됩니다.")
 
+    st.markdown("#### 보고서 전송")
+    state_text, state_class = TELEGRAM_STATE_LABEL[TELEGRAM_STATE]
+    st.markdown(
+        f'<span class="tg-pill {state_class}">TELEGRAM · {state_text}</span>',
+        unsafe_allow_html=True,
+    )
+    pin_ready = owner_pin_configured(TELEGRAM_RAW)
+    unlocked = False
+    if not pin_ready:
+        st.caption(
+            "관리자 PIN이 설정되지 않아 전송이 잠겨 있습니다. "
+            "st.secrets의 [telegram] owner_pin을 설정하면 열립니다."
+        )
+    else:
+        pin_input = st.text_input(
+            "관리자 PIN",
+            type="password",
+            key="owner_pin_input",
+            help="이 값은 세션 안에서만 사용되며 저장되지 않습니다.",
+        )
+        unlocked = verify_owner_pin(TELEGRAM_RAW, pin_input)
+        if pin_input and not unlocked:
+            st.caption("PIN이 일치하지 않습니다.")
+        elif unlocked:
+            st.caption("관리자 확인됨.")
+    can_send = safe and unlocked and TELEGRAM_STATE == "active"
+    auto_send = st.checkbox(
+        "경기 종료 후 자동 전송",
+        value=False,
+        disabled=not can_send,
+        help="공개 앱 보호를 위해 기본값은 꺼짐이며 관리자 PIN이 맞아야 켤 수 있습니다.",
+    )
+    manual_send = st.button(
+        "이번 경기 보고서 전송",
+        width="stretch",
+        disabled=not can_send or "red_report" not in st.session_state,
+    )
+    result_state = st.session_state.get("telegram_result")
+    if result_state:
+        status_text, status_detail = result_state
+        renderer = st.success if status_text == "sent" else st.warning
+        renderer(f"전송 상태: {status_text} · {status_detail}")
+
 if run_clicked:
     with st.spinner("폐쇄형 시뮬레이션을 실행하고 있습니다…"):
-        st.session_state["match_result"] = run_match(
+        match_result = run_match(
             difficulty=difficulty_label.lower(),
             strictness=strictness,
             profiles=profiles,
             seed=int(seed_value) if fixed_seed else None,
         )
+    st.session_state["match_result"] = match_result
+    st.session_state["red_report"] = build_red_report(match_result)
+    st.session_state["report_token"] = st.session_state.get("report_token", 0) + 1
+    st.session_state.pop("telegram_result", None)
+
+trigger = AUTO if run_clicked else MANUAL if manual_send else None
+decision = plan_delivery(
+    trigger,
+    can_send=can_send,
+    auto_send_enabled=bool(auto_send),
+    report_token=st.session_state.get("report_token"),
+    already_sent_token=st.session_state.get("auto_sent_token"),
+)
+if decision.should_send:
+    deliver_report(st.session_state["red_report"], trigger)
+
+safety_badge_class = "safe" if safe else "blocked"
+safety_badge_text = "안전 게이트 통과" if safe else "안전 게이트 차단"
+reporting_badge = REPORTING_BADGE[TELEGRAM_STATE]
 
 st.markdown(
     f"""
@@ -134,8 +263,9 @@ st.markdown(
   <p>공식 알림과 외형이 같은 합성 위조 알림을 시스템 신호로 구분하고,
   사용자의 검증·경고 이탈·제출 행동과 Blue의 사전 탐지·사후 봉쇄를 단계별로 관찰합니다.</p>
   <div class="badges">
-    <span class="badge safe">● 안전 게이트 통과</span>
-    <span class="badge">NO NETWORK EGRESS</span>
+    <span class="badge {safety_badge_class}">● {safety_badge_text}</span>
+    <span class="badge">SIMULATION ENGINE · NO EGRESS</span>
+    <span class="badge">{reporting_badge}</span>
     <span class="badge">NO LLM</span>
     <span class="badge">IN-MEMORY SQLITE</span>
     <span class="badge">NO CREDENTIAL SECRETS</span>
@@ -185,9 +315,75 @@ with seed_col:
         delta_color="off",
     )
 
-overview_tab, behavior_tab, compare_tab, timeline_tab, audit_tab = st.tabs(
-    ["개요", "행동 분석", "신호 비교", "이벤트 타임라인", "감사·미리보기"]
+(
+    overview_tab,
+    report_tab,
+    behavior_tab,
+    compare_tab,
+    timeline_tab,
+    audit_tab,
+) = st.tabs(
+    ["개요", "Red Team 보고서", "행동 분석", "신호 비교", "이벤트 타임라인", "감사·미리보기"]
 )
+
+with report_tab:
+    report = st.session_state.get("red_report")
+    if report is None:
+        st.info("경기를 실행하면 Red Team 보고서가 생성됩니다.")
+    else:
+        st.markdown(
+            '<div class="section-label">MATCH REPORT SUMMARY</div>',
+            unsafe_allow_html=True,
+        )
+        headline = summary_metrics(report)
+        for start in range(0, len(headline), 2):
+            cols = st.columns(2)
+            for col, (label, value) in zip(cols, headline[start : start + 2]):
+                col.metric(label, value)
+
+        st.markdown(
+            '<div class="section-label">ATTEMPT REPORTS</div>',
+            unsafe_allow_html=True,
+        )
+        st.caption(
+            "본문·URL·서명 토큰·계정 식별자는 보고서에 포함되지 않습니다. "
+            "발신자와 목적지는 분류 라벨로만 표시됩니다."
+        )
+        badge_class = {
+            "success": "rt-success",
+            "partial": "rt-partial",
+            "failure": "rt-failure",
+        }
+        for card in build_cards(report):
+            blocks = [
+                '<div class="rt-card">',
+                '<div class="rt-head">',
+                f'<span class="rt-title">{card["title"]}</span>',
+                f'<span class="rt-badge {badge_class[card["outcome"]]}">'
+                f'{card["badge"]}</span>',
+                "</div>",
+                f'<div class="rt-sub">{card["subtitle"]}</div>',
+            ]
+            for section in card["sections"]:
+                blocks.append('<div class="rt-sec">')
+                blocks.append(
+                    f'<div class="rt-sec-title">{section["title"]}</div>'
+                )
+                for item in section["items"]:
+                    blocks.append(f'<div class="rt-item">{item}</div>')
+                blocks.append("</div>")
+            blocks.append("</div>")
+            st.markdown("".join(blocks), unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="section-label">RESEARCH CONCLUSIONS</div>',
+            unsafe_allow_html=True,
+        )
+        for index, text in enumerate(report.conclusions, 1):
+            st.markdown(
+                f'<div class="rt-item">{index}. {text}</div>',
+                unsafe_allow_html=True,
+            )
 
 with overview_tab:
     st.markdown('<div class="section-label">RAW METRICS</div>', unsafe_allow_html=True)
@@ -198,9 +394,14 @@ with overview_tab:
         ("warning_escape", "Warning Escape"),
         ("harm_click", "Harm · Click"),
         ("harm_submit", "Harm · Submit"),
-        ("credential_compromise", "Synthetic Compromise"),
+        ("credential_exposure", "Synthetic Credential Exposure"),
+        ("takeover_success", "Simulated Takeover Success"),
+        ("exposure_prevented_by_prior_lock", "Exposure Prevented"),
         ("containment_success", "Containment"),
+        ("overreaction", "Over-reaction"),
         ("user_saved", "User Saved"),
+        ("official_submission", "Official Submission"),
+        ("forged_submission", "Forged Submission"),
     ]
     for start in range(0, len(labels), 3):
         cols = st.columns(3)

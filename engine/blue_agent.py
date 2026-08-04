@@ -11,6 +11,13 @@ from engine.detection_params import DetectionParams, classify_risk
 from engine.observation import BlueObservation
 
 
+OBSERVABLE_DESTINATION_CLASSES = (
+    "official_owned",
+    "synthetic_unowned",
+    "internal_capture",
+)
+
+
 @dataclass(frozen=True)
 class PreAssessment:
     risk_total: int
@@ -136,34 +143,47 @@ def post_action_response(
     repo: BlueRepo,
     params: DetectionParams,
 ) -> PostResponse:
+    """Respond only to observable risk. Submissions to owned routes are normal."""
     del params
-    required = {"event_type", "message_id", "account_id", "step_index"}
+    required = {
+        "event_type", "message_id", "account_id", "step_index", "destination_class",
+    }
     if not isinstance(action_event, Mapping) or not required <= set(action_event):
         raise TypeError("행동 이벤트 매핑이 필요합니다.")
     event_type = str(action_event["event_type"])
     message_id = int(action_event["message_id"])
     account_id = int(action_event["account_id"])
     step_index = int(action_event["step_index"])
+    destination_class = str(action_event["destination_class"])
+    if destination_class not in OBSERVABLE_DESTINATION_CLASSES:
+        raise ValueError("알 수 없는 목적지 분류입니다.")
 
+    snapshot = repo.account_snapshot(account_id)
+    status = snapshot["status"]
+    session = snapshot["session_state"]
     page_blocked = False
-    status = repo.account_snapshot(account_id)["status"]
-    session = repo.account_snapshot(account_id)["session_state"]
     response = "observed"
+
     if event_type == "USER_REPORT":
         repo.mark_report_handled(message_id)
         page_blocked = repo.block_page(message_id, step_index)
         response = "reported_handled"
-    elif event_type == "USER_CLICK":
-        page_blocked = repo.block_page(message_id, step_index)
-        repo.protect_account(account_id, "active", "stepup_required")
-        session = "stepup_required"
-        response = "page_blocked_stepup_required"
+    elif destination_class == "official_owned":
+        # A submission or click on a registry-owned route is ordinary platform
+        # use. Acting here would be an over-reaction, so no state is changed.
+        response = "no_action_official_destination"
     elif event_type == "USER_SUBMIT":
         page_blocked = repo.block_page(message_id, step_index)
         repo.protect_account(account_id, "recovery_pending", "revoked")
         status = "recovery_pending"
         session = "revoked"
         response = "contained"
+    elif event_type == "USER_CLICK":
+        page_blocked = repo.block_page(message_id, step_index)
+        repo.protect_account(account_id, "active", "stepup_required")
+        session = "stepup_required"
+        response = "page_blocked_stepup_required"
+
     repo.save_post_response(message_id, response, step_index)
     repo.commit()
     return PostResponse(response, step_index, page_blocked, status, session)

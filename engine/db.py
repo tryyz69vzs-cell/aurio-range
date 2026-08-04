@@ -27,6 +27,7 @@ CREATE TABLE accounts(
   username TEXT NOT NULL,
   email TEXT NOT NULL,
   profile TEXT NOT NULL CHECK(profile IN ('cautious','average','careless')),
+  scenario_key TEXT NOT NULL,
   mfa_enabled INTEGER NOT NULL CHECK(mfa_enabled IN (0,1)),
   status TEXT NOT NULL,
   session_state TEXT NOT NULL
@@ -115,11 +116,17 @@ CREATE TABLE capture_events(
   match_id INTEGER NOT NULL,
   message_id INTEGER NOT NULL,
   account_id INTEGER NOT NULL,
+  submission_target TEXT NOT NULL
+    CHECK(submission_target IN ('official_owned','synthetic_unowned','internal_capture')),
+  account_status_at_submit TEXT NOT NULL,
+  session_state_at_submit TEXT NOT NULL,
   attempted_username INTEGER NOT NULL CHECK(attempted_username IN (0,1)),
   attempted_password INTEGER NOT NULL CHECK(attempted_password IN (0,1)),
   valid_synthetic_credentials_submitted INTEGER NOT NULL
     CHECK(valid_synthetic_credentials_submitted IN (0,1)),
   submitted_to_phish INTEGER NOT NULL CHECK(submitted_to_phish IN (0,1)),
+  credential_exposure INTEGER NOT NULL CHECK(credential_exposure IN (0,1)),
+  takeover_success INTEGER NOT NULL CHECK(takeover_success IN (0,1)),
   step_index INTEGER NOT NULL
 );
 
@@ -147,8 +154,13 @@ CREATE TABLE judge_evaluations(
   warning_escape INTEGER NOT NULL,
   user_harm_click INTEGER NOT NULL,
   user_harm_submit INTEGER NOT NULL,
-  credential_compromise INTEGER NOT NULL,
+  official_submission INTEGER NOT NULL,
+  forged_submission INTEGER NOT NULL,
+  credential_exposure INTEGER NOT NULL,
+  takeover_success INTEGER NOT NULL,
+  exposure_prevented_by_prior_lock INTEGER NOT NULL,
   containment_success INTEGER NOT NULL,
+  overreaction INTEGER NOT NULL,
   user_saved INTEGER NOT NULL,
   detection_latency_steps INTEGER,
   containment_latency_steps INTEGER
@@ -166,8 +178,13 @@ CREATE TABLE match_scores(
   warning_escape INTEGER NOT NULL,
   harm_click INTEGER NOT NULL,
   harm_submit INTEGER NOT NULL,
-  credential_compromise INTEGER NOT NULL,
+  official_submission INTEGER NOT NULL,
+  forged_submission INTEGER NOT NULL,
+  credential_exposure INTEGER NOT NULL,
+  takeover_success INTEGER NOT NULL,
+  exposure_prevented_by_prior_lock INTEGER NOT NULL,
   containment_success INTEGER NOT NULL,
+  overreaction INTEGER NOT NULL,
   user_saved INTEGER NOT NULL,
   avg_detection_steps REAL,
   avg_containment_steps REAL,

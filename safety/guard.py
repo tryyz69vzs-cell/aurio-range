@@ -14,6 +14,11 @@ from safety.constitution import (
     LOCKED_FILES,
     RED_ALLOWED_KEYS,
     RED_DESTINATION_IDENTIFIERS,
+    REPORTING_EGRESS_MODULE,
+    REPORTING_PACKAGE,
+    REPORTING_SENDER_ALLOWED_IMPORTS,
+    SIMULATION_PACKAGES,
+    TELEGRAM_ALLOWED_HOST,
     SafetyViolation,
 )
 
@@ -29,6 +34,7 @@ MARKUP_PATTERN = re.compile(
     re.IGNORECASE,
 )
 URL_PATTERN = re.compile(r"(?:https?|ftp|file|data|javascript)\s*:", re.IGNORECASE)
+LITERAL_ENDPOINT_PATTERN = re.compile(r"://\s*[A-Za-z0-9]")
 UNSAFE_TEMPLATE_PATTERN = re.compile(
     r"<\s*(?:script|form|input|button|iframe|object|embed|link|a)\b"
     r"|(?:href|src|action)\s*="
@@ -89,6 +95,57 @@ def _reserved_host(value: str, registry: dict[str, Any]) -> bool:
     )
 
 
+def _check_reporting_boundary() -> None:
+    """S11 and S12: one egress module, one host, and no path back to the engine."""
+    reporting_root = ROOT / REPORTING_PACKAGE
+    if not reporting_root.is_dir():
+        raise SafetyViolation("보고 모듈 디렉터리가 없습니다.")
+
+    for package in SIMULATION_PACKAGES:
+        for path in (ROOT / package).glob("*.py"):
+            for imported in _import_names(path):
+                if imported == REPORTING_PACKAGE or imported.startswith(
+                    f"{REPORTING_PACKAGE}."
+                ):
+                    raise SafetyViolation(
+                        f"시뮬레이션 패키지가 보고 모듈을 import했습니다: {path.name}"
+                    )
+
+    sender_seen = False
+    for path in sorted(reporting_root.glob("*.py")):
+        relative = f"{REPORTING_PACKAGE}/{path.name}"
+        imports = _import_names(path)
+        if relative != REPORTING_EGRESS_MODULE:
+            for imported in imports:
+                if any(
+                    imported == denied or imported.startswith(f"{denied}.")
+                    for denied in FORBIDDEN_IMPORTS
+                ):
+                    raise SafetyViolation(
+                        f"승인되지 않은 보고 모듈 네트워크 import: {relative}"
+                    )
+            continue
+
+        sender_seen = True
+        for imported in imports:
+            if imported not in REPORTING_SENDER_ALLOWED_IMPORTS:
+                raise SafetyViolation(
+                    f"보고 전송 모듈의 허용되지 않은 import: {imported}"
+                )
+        source = path.read_text(encoding="utf-8")
+        if "safety.constitution" not in source:
+            raise SafetyViolation(
+                "보고 전송 모듈이 잠긴 정책 호스트를 참조하지 않습니다."
+            )
+        if TELEGRAM_ALLOWED_HOST != "api.telegram.org":
+            raise SafetyViolation("승인된 전송 호스트가 변경되었습니다.")
+        if LITERAL_ENDPOINT_PATTERN.search(source):
+            raise SafetyViolation("보고 전송 모듈에 고정되지 않은 목적지가 있습니다.")
+
+    if not sender_seen:
+        raise SafetyViolation("승인된 보고 전송 모듈을 찾을 수 없습니다.")
+
+
 def run_startup_checks() -> None:
     registry = _registry()
     if registry.get("internal_capture_path") != "/_sim/capture":
@@ -104,7 +161,7 @@ def run_startup_checks() -> None:
         raise SafetyViolation("신뢰 호스트가 예약 도메인이 아닙니다.")
 
     runtime_sources = [ROOT / "app.py"]
-    for package in ("engine", "safety", "brandkit"):
+    for package in SIMULATION_PACKAGES:
         runtime_sources.extend((ROOT / package).glob("*.py"))
     for path in runtime_sources:
         if path.name == "relock.py":
@@ -115,6 +172,8 @@ def run_startup_checks() -> None:
                 for denied in FORBIDDEN_IMPORTS
             ):
                 raise SafetyViolation(f"금지 네트워크 import: {imported}")
+
+    _check_reporting_boundary()
 
     for relative in (
         "brandkit/templates/email.html",

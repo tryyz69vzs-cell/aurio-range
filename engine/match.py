@@ -16,8 +16,9 @@ from engine.judge import evaluate
 from engine.observation import BlueObservation
 from engine.platform_state import (
     build_official_scenario,
-    create_accounts,
+    classify_submission_target,
     create_official_event,
+    create_scenario_account,
     materialize_scenario,
     official_event_exists,
 )
@@ -128,7 +129,7 @@ def _record_user_journey(
     urgency_level: str,
     warned: bool,
     rng: random.Random,
-    is_phish_page: bool,
+    destination_class: str,
 ) -> str:
     event_ref = connection.execute(
         "SELECT claimed_event_ref FROM messages WHERE id=?", (message_id,)
@@ -167,31 +168,60 @@ def _record_user_journey(
         elif transition.action == "USER_ABORT" and decisive == "USER_IGNORE":
             decisive = "USER_ABORT"
 
-        if transition.action == "USER_SUBMIT" and is_phish_page:
-            attempted_username = 1
-            attempted_password = 1
-            account_status = connection.execute(
-                "SELECT status FROM accounts WHERE id=?", (account["id"],)
-            ).fetchone()["status"]
-            valid_submission = int(
-                attempted_username
-                and attempted_password
-                and account_status == "active"
-                and transition.to_state.value == "SUBMITTED"
-            )
-            connection.execute(
-                """INSERT INTO capture_events(
-                     match_id, message_id, account_id, attempted_username,
-                     attempted_password, valid_synthetic_credentials_submitted,
-                     submitted_to_phish, step_index
-                   ) VALUES(?,?,?,?,?,?,?,?)""",
-                (
-                    match_id, message_id, account["id"],
-                    attempted_username, attempted_password,
-                    valid_submission, 1, event.step_index,
-                ),
+        if transition.action == "USER_SUBMIT":
+            _record_submission(
+                connection, match_id, message_id, account["id"],
+                destination_class, transition.to_state.value, event.step_index,
             )
     return decisive
+
+
+def _record_submission(
+    connection,
+    match_id: int,
+    message_id: int,
+    account_id: int,
+    destination_class: str,
+    to_state: str,
+    step_index: int,
+) -> None:
+    """Snapshot the account at the exact submit step; never re-read it later."""
+    snapshot = connection.execute(
+        "SELECT status, session_state FROM accounts WHERE id=?", (account_id,)
+    ).fetchone()
+    status_at_submit = str(snapshot["status"])
+    session_at_submit = str(snapshot["session_state"])
+
+    attempted_username = 1
+    attempted_password = 1
+    valid_submission = int(
+        attempted_username and attempted_password and to_state == "SUBMITTED"
+    )
+    submitted_to_phish = int(destination_class == "internal_capture")
+    # Exposure is independent of account state: the synthetic credential action
+    # reached a capture sink regardless of whether the account was already safe.
+    credential_exposure = int(bool(valid_submission) and bool(submitted_to_phish))
+    takeover_success = int(
+        credential_exposure
+        and status_at_submit == "active"
+        and session_at_submit not in {"revoked", "stepup_required"}
+    )
+    connection.execute(
+        """INSERT INTO capture_events(
+             match_id, message_id, account_id, submission_target,
+             account_status_at_submit, session_state_at_submit,
+             attempted_username, attempted_password,
+             valid_synthetic_credentials_submitted, submitted_to_phish,
+             credential_exposure, takeover_success, step_index
+           ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            match_id, message_id, account_id, destination_class,
+            status_at_submit, session_at_submit,
+            attempted_username, attempted_password,
+            valid_submission, submitted_to_phish,
+            credential_exposure, takeover_success, step_index,
+        ),
+    )
 
 
 def _process_message(
@@ -204,7 +234,7 @@ def _process_message(
     account,
     structured: Mapping[str, Any],
     rng: random.Random,
-    is_phish_page: bool,
+    destination_class: str,
 ) -> None:
     queue.record("MESSAGE_RECEIVED", message_id, account["id"])
     assessment = pre_delivery_assess(
@@ -243,11 +273,11 @@ def _process_message(
         connection, queue, match_id, message_id, account,
         structured["urgency_level"],
         assessment.pre_delivery_action == "warn",
-        rng, is_phish_page,
+        rng, destination_class,
     )
     response_event = queue.record(
         "BLUE_POST_RESPONSE", message_id, account["id"],
-        {"trigger_event": decisive},
+        {"trigger_event": decisive, "destination_class": destination_class},
     )
     post_action_response(
         {
@@ -255,6 +285,7 @@ def _process_message(
             "message_id": message_id,
             "account_id": account["id"],
             "step_index": response_event.step_index,
+            "destination_class": destination_class,
         },
         blue_repo,
         params,
@@ -269,11 +300,20 @@ def _row_dicts(rows) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _build_result(connection, match_id: int, summary: dict[str, Any], seed: int):
+def _build_result(
+    connection,
+    match_id: int,
+    summary: dict[str, Any],
+    seed: int,
+    difficulty: str,
+    strictness: str,
+):
     messages = _row_dicts(
         connection.execute(
-            """SELECT m.id, m.account_id, a.profile, m.display_sender_name,
-                      m.auth_sender_address, m.subject_text, m.body_text,
+            """SELECT m.id, m.account_id, a.profile, a.scenario_key,
+                      m.display_sender_name,
+                      m.auth_sender_address, m.claimed_event_type,
+                      m.subject_text, m.body_text,
                       m.rendered_html, m.delivery_status, b.risk_total, b.band,
                       b.pre_delivery_action, b.post_action_response,
                       b.signals_json
@@ -289,7 +329,8 @@ def _build_result(connection, match_id: int, summary: dict[str, Any], seed: int)
 
     evaluations = _row_dicts(
         connection.execute(
-            """SELECT j.*, g.true_difficulty, a.profile
+            """SELECT j.*, g.true_difficulty, g.red_tactic_id,
+                      g.scenario_goal, a.profile, a.scenario_key
                FROM judge_evaluations AS j
                JOIN scenario_ground_truth AS g ON g.message_id=j.message_id
                JOIN messages AS m ON m.id=j.message_id
@@ -436,6 +477,17 @@ def _build_result(connection, match_id: int, summary: dict[str, Any], seed: int)
     )
     for preview in previews:
         preview["static_html"] = static_login_preview(preview.pop("html"))
+    capture_rows = _row_dicts(
+        connection.execute(
+            """SELECT message_id, account_id, submission_target,
+                      account_status_at_submit, session_state_at_submit,
+                      attempted_username, attempted_password,
+                      valid_synthetic_credentials_submitted, submitted_to_phish,
+                      credential_exposure, takeover_success, step_index
+               FROM capture_events WHERE match_id=? ORDER BY step_index""",
+            (match_id,),
+        )
+    )
     safety_events = _row_dicts(
         connection.execute(
             """SELECT kind, detail, ts FROM safety_events
@@ -446,6 +498,8 @@ def _build_result(connection, match_id: int, summary: dict[str, Any], seed: int)
     return {
         "match_id": match_id,
         "seed": seed,
+        "difficulty": difficulty,
+        "strictness": strictness,
         "scores": {
             "red": summary["red_score"],
             "blue": summary["blue_score"],
@@ -463,6 +517,7 @@ def _build_result(connection, match_id: int, summary: dict[str, Any], seed: int)
         "judge_evaluations": evaluations,
         "user_actions": action_rows,
         "previews": previews,
+        "capture_events": capture_rows,
         "safety_events": safety_events,
     }
 
@@ -486,7 +541,6 @@ def run_match(
         random.SystemRandom().randrange(1, 2_147_483_647)
         if seed is None else int(seed)
     )
-    rng = random.Random(actual_seed)
     registry = load_registry()
     visual = load_visual()
     params = get_params(strictness)
@@ -504,10 +558,17 @@ def run_match(
         match_id = int(cursor.lastrowid)
         queue = EventQueue(connection, match_id)
         blue_repo = BlueRepo(connection, registry)
-        accounts = create_accounts(connection, match_id, chosen_profiles)
 
-        for account in accounts:
+        for profile in chosen_profiles:
             for level in _difficulty_list(difficulty):
+                scenario_key = f"{profile}-{level}"
+                # Fresh account per scenario: no earlier response can leak into
+                # a later scenario's metrics. Seeded per scenario so results do
+                # not depend on execution order.
+                account = create_scenario_account(
+                    connection, match_id, profile, scenario_key
+                )
+                rng = random.Random(f"{actual_seed}|{scenario_key}")
                 placeholder = None
                 if level == "hard":
                     hard_ref = f"AR-H-{account['id']:04d}"
@@ -552,7 +613,7 @@ def run_match(
                 official_variant = (
                     "hard_triggered" if level == "hard"
                     else "infrastructure_drift"
-                    if level == "medium" and account["profile"] == "careless"
+                    if level == "medium" and profile == "careless"
                     else "route_drift" if level == "medium"
                     else "normal"
                 )
@@ -573,13 +634,20 @@ def run_match(
                     connection, queue, match_id, account["id"],
                     red_structured, red_rendered, "forged",
                 )
-                _process_message(
-                    connection, queue, blue_repo, params, match_id,
-                    official_id, account, official_structured, rng, False,
+                official_target = classify_submission_target(
+                    connection, registry, official_id
+                )
+                forged_target = classify_submission_target(
+                    connection, registry, forged_id
                 )
                 _process_message(
                     connection, queue, blue_repo, params, match_id,
-                    forged_id, account, red_structured, rng, True,
+                    official_id, account, official_structured, rng,
+                    official_target,
+                )
+                _process_message(
+                    connection, queue, blue_repo, params, match_id,
+                    forged_id, account, red_structured, rng, forged_target,
                 )
 
         queue.record("MATCH_CLOSED", None, None)
@@ -589,6 +657,8 @@ def run_match(
         )
         summary = evaluate(JudgeRepo(connection), match_id)
         connection.commit()
-        return _build_result(connection, match_id, summary, actual_seed)
+        return _build_result(
+            connection, match_id, summary, actual_seed, difficulty, strictness
+        )
     finally:
         connection.close()
