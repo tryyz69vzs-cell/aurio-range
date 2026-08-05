@@ -1,0 +1,8 @@
+{
+  "runs": 1,
+  "generation": 3,
+  "last_best_strategy_id": "g0-seed-07-policy_violati",
+  "last_best_evaluation_fitness": -4.493203,
+  "last_run_at": "2026-08-05T20:41:27Z",
+  "stop_reason": "정상 종료"
+}
