@@ -149,15 +149,17 @@ def test_same_seed_produces_identical_report():
     assert _report(1010) == _report(1010)
 
 
-def test_telegram_messages_are_ordered_and_chunked():
+def test_legacy_chat_helper_still_chunks_but_is_not_the_delivery_route():
+    """build_telegram_messages is kept for in-app preview, not for sending."""
     messages = build_telegram_messages(_report())
     assert len(messages) >= 3
     total = len(messages)
     for index, body in enumerate(messages, 1):
         assert body.startswith(f"[{index}/{total}]")
         assert len(body) <= 3700
-    assert "경기 전체 요약" in messages[0]
-    assert "최종 연구 결론" in messages[-1]
+    app_source = (ROOT / "app.py").read_text(encoding="utf-8")
+    assert "send_report_bundle" in app_source
+    assert "build_telegram_messages" not in app_source
 
 
 def test_status_and_credentials_handle_missing_configuration():
@@ -238,7 +240,7 @@ def test_successful_delivery_uses_only_the_approved_endpoint():
 
 
 def test_transport_failure_is_contained_and_scrubbed():
-    recorder = _Recorder(fail_at=2)
+    recorder = _Recorder(fail_at=1)
     credentials = build_credentials(SECRETS)
     outcome = send_report(_report(), credentials, transport=recorder)
     assert outcome.ok is False

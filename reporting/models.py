@@ -51,6 +51,27 @@ class SafeAttemptReport:
     """One synthetic forged attempt, described without reusable attack content."""
 
     attempt_no: int
+    attempt_id: str
+    generation: int | None
+    strategy_id: str
+    parent_strategy_id: str | None
+    tactic_family: str
+    changed_fields: tuple[str, ...]
+    change_reason: str
+    delivery_timing: str
+    official_event_relation: str
+    notification_pairing: str
+    sender_auth_level: str
+    signature_state: str
+    event_record_alignment: str
+    destination_ownership_class: str
+    urgency_level: str
+    wording_tone: str
+    template_family: str
+    layout_variant: str
+    information_density: str
+    cta_class: str
+    personalization_level: str
     difficulty: str
     strictness: str
     tactic_id: str
@@ -122,7 +143,41 @@ class SafeMatchSummary:
     friction: int
     false_negative: int
     user_saved: int
+    avg_detection_steps: float
+    avg_containment_steps: float
     safety_events: int
+
+
+@dataclass(frozen=True)
+class SafeStrategyLineage:
+    """One strategy node in the Adaptive Red lineage."""
+
+    generation: int
+    strategy_id: str
+    parent_strategy_id: str | None
+    changed_fields: tuple[str, ...]
+    change_reason: str
+    training_fitness: float
+    evaluation_fitness: float
+    delta_from_parent: float
+    top_detected_blue_signals: tuple[str, ...]
+    user_behavior_summary: str
+    keep_or_drop: str
+
+
+@dataclass(frozen=True)
+class SafeEvolutionSummary:
+    """Adaptive Red context, or the static strategy when evolution is off."""
+
+    enabled: bool
+    generations: int
+    population_size: int
+    best_strategy_id: str
+    best_training_fitness: float
+    best_evaluation_fitness: float
+    training_seeds: tuple[int, ...]
+    evaluation_seed_count: int
+    lineage: tuple[SafeStrategyLineage, ...]
 
 
 @dataclass(frozen=True)
@@ -132,3 +187,4 @@ class SafeRedReport:
     summary: SafeMatchSummary
     attempts: tuple[SafeAttemptReport, ...]
     conclusions: tuple[str, ...]
+    evolution: SafeEvolutionSummary | None = None

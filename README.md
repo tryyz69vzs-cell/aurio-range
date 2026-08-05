@@ -80,6 +80,16 @@ python -m pytest -q
 - `● 안전 게이트 통과` / `● 안전 게이트 차단` — 안전 게이트 결과입니다.
   차단 상태에서는 경기 실행과 보고서 전송이 모두 비활성화됩니다.
 
+## Telegram 보고 형식
+
+경기 종료 시 Telegram으로 가는 것은 두 건뿐입니다.
+
+- `sendMessage` 짧은 요약 1건
+- `sendDocument` 보고서 ZIP 1건 (`aurio-report-<seed>-<시각>.zip`)
+
+긴 텍스트를 여러 메시지로 나눠 보내지 않습니다. 상세 분석·원시 지표·정적
+미리보기 이미지는 모두 첨부 ZIP 안에 있습니다.
+
 ## 지표 의미 변경
 
 `credential_compromise` 는 `credential_exposure` 와 `takeover_success` 로 분리됐습니다.

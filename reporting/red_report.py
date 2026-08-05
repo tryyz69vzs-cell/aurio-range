@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from engine.detection_params import BAND_THRESHOLDS
+from reporting.artifacts import TEMPLATE_FAMILY, LAYOUT_VARIANT, describe_artifact
 from reporting.models import (
     SafeAttemptReport,
     SafeMatchSummary,
@@ -68,6 +69,30 @@ TACTIC_LIBRARY: dict[str, dict[str, str]] = {
     },
 }
 
+TACTIC_FAMILY = {
+    "obvious-spoof": "sender_forgery",
+    "trusted-relay-abuse": "trusted_channel_abuse",
+    "event-shadowing": "incident_echo",
+}
+
+DELIVERY_TIMING = {
+    "easy": "independent_of_platform_events",
+    "medium": "independent_of_platform_events",
+    "hard": "immediately_after_platform_incident",
+}
+
+OFFICIAL_EVENT_RELATION = {
+    "easy": "no_matching_platform_incident",
+    "medium": "no_matching_platform_incident",
+    "hard": "references_the_same_real_incident",
+}
+
+NOTIFICATION_PAIRING = {
+    "easy": "forged_only_no_official_counterpart_reference",
+    "medium": "forged_arrives_alongside_unrelated_official_notice",
+    "hard": "forged_shadows_the_triggered_official_notice",
+}
+
 SECONDARY_PROBE_FRAMING = (
     "warning_escape_test: Blue의 경고 이후 합성 사용자 유형별 경고 무시 행동 실험"
 )
@@ -91,6 +116,14 @@ def _signal_findings(signals: Mapping[str, Any]) -> tuple[SafeSignalFinding, ...
         )
         for name, payload in ordered
     )
+
+
+def _strategy_meta(result, message_id: int) -> dict:
+    """Adaptive Red context for one message, empty for a static match."""
+    for row in result.get("strategy_records", []):
+        if int(row["message_id"]) == int(message_id):
+            return dict(row)
+    return {}
 
 
 def _capture_snapshot(result, message_id: int) -> dict[str, str]:
@@ -375,7 +408,9 @@ def _conclusions(
     return tuple(notes)
 
 
-def build_red_report(result: Mapping[str, Any]) -> SafeRedReport:
+def build_red_report(
+    result: Mapping[str, Any], evolution: Any | None = None
+) -> SafeRedReport:
     """Create the sanitized Red Team report for a finished match."""
     if not isinstance(result, Mapping) or "judge_evaluations" not in result:
         raise ValueError("완료된 경기 결과 객체가 필요합니다.")
@@ -426,8 +461,16 @@ def build_red_report(result: Mapping[str, Any]) -> SafeRedReport:
 
         findings = _signal_findings(signals)
         tactic_id = str(evaluation["red_tactic_id"] or "unclassified")
+        level = str(evaluation["true_difficulty"])
+        strategy_meta = _strategy_meta(result, int(evaluation["message_id"]))
         tactic = TACTIC_LIBRARY.get(tactic_id, GENERIC_TACTIC)
         record_state = classify_official_record(signals)
+        sender_class = classify_sender(signals)
+        destination_class = classify_destination(signals)
+        structure = describe_artifact(
+            "forged_email", message, signals, level,
+            sender_class, destination_class, record_state,
+        )
         outcome, reason = _outcome(
             action, clicked, submitted, reported, exposure, takeover, prevented
         )
@@ -435,6 +478,37 @@ def build_red_report(result: Mapping[str, Any]) -> SafeRedReport:
         attempts.append(
             SafeAttemptReport(
                 attempt_no=attempt_no,
+                attempt_id=f"A{attempt_no:03d}",
+                generation=strategy_meta.get("generation"),
+                strategy_id=str(strategy_meta.get("strategy_id", f"static-{tactic_id}")),
+                parent_strategy_id=strategy_meta.get("parent_strategy_id"),
+                tactic_family=TACTIC_FAMILY.get(tactic_id, "unclassified_family"),
+                changed_fields=tuple(strategy_meta.get("changed_fields", ())),
+                change_reason=str(
+                    strategy_meta.get("change_reason", "고정 전술(진화 미사용)")
+                ),
+                delivery_timing=DELIVERY_TIMING.get(level, "unspecified"),
+                official_event_relation=OFFICIAL_EVENT_RELATION.get(
+                    level, "unspecified"
+                ),
+                notification_pairing=NOTIFICATION_PAIRING.get(level, "unspecified"),
+                sender_auth_level=str(signals["sender_auth"]["value"]),
+                signature_state=str(signals["signature_validity"]["value"]),
+                event_record_alignment=(
+                    "aligned_with_real_incident"
+                    if record_state == "present"
+                    else "no_matching_record"
+                ),
+                destination_ownership_class=str(
+                    signals["destination_ownership"]["value"]
+                ),
+                urgency_level=str(structure["urgency_level"]),
+                wording_tone=str(structure["wording_tone"]),
+                template_family=str(structure["template_family"]),
+                layout_variant=str(structure["layout_variant"]),
+                information_density=str(structure["information_density"]),
+                cta_class=str(structure["CTA_label_class"]),
+                personalization_level=str(structure["personalization_level"]),
                 difficulty=str(evaluation["true_difficulty"]),
                 strictness=strictness,
                 tactic_id=tactic_id,
@@ -444,8 +518,8 @@ def build_red_report(result: Mapping[str, Any]) -> SafeRedReport:
                 hypothesis=clean_text(tactic["hypothesis"]),
                 target_profile=str(message["profile"]),
                 scenario_family=str(message["claimed_event_type"]),
-                sender_class=classify_sender(signals),
-                destination_class=classify_destination(signals),
+                sender_class=sender_class,
+                destination_class=destination_class,
                 submission_sink="internal_capture" if submitted else "none",
                 official_event_record=record_state,
                 risk_total=int(message["risk_total"]),
@@ -543,6 +617,8 @@ def build_red_report(result: Mapping[str, Any]) -> SafeRedReport:
         ),
         overreaction=int(metrics["overreaction"]),
         user_saved=int(metrics["user_saved"]),
+        avg_detection_steps=float(metrics["avg_detection_steps"]),
+        avg_containment_steps=float(metrics["avg_containment_steps"]),
         safety_events=len(result["safety_events"]),
     )
     ordered = tuple(
@@ -559,6 +635,7 @@ def build_red_report(result: Mapping[str, Any]) -> SafeRedReport:
         summary=summary,
         attempts=tuple(attempts),
         conclusions=_conclusions(summary, ordered),
+        evolution=evolution,
     )
     assert_report_is_clean(report)
     return report

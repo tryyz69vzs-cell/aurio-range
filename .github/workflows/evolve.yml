@@ -1,0 +1,80 @@
+name: Adaptive Red evolution
+
+on:
+  workflow_dispatch:
+    inputs:
+      generations:
+        description: "세대 수 (최대 10)"
+        default: "3"
+      population_size:
+        description: "세대당 후보 수 (최대 30)"
+        default: "8"
+      max_matches:
+        description: "최대 경기 수 (최대 2000)"
+        default: "240"
+      seed:
+        description: "기준 seed"
+        default: "20260731"
+  schedule:
+    - cron: "17 19 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    env:
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
+      - name: Safety gate
+        run: python -c "from safety.guard import arena_gate; arena_gate()"
+      - name: Full test suite
+        run: python -m pytest -q
+      - name: Run evolution
+        env:
+          AURIO_GENERATIONS: ${{ github.event.inputs.generations || '3' }}
+          AURIO_POPULATION: ${{ github.event.inputs.population_size || '8' }}
+          AURIO_MAX_MATCHES: ${{ github.event.inputs.max_matches || '240' }}
+          AURIO_SEED: ${{ github.event.inputs.seed || '20260731' }}
+        run: python -m tools.run_evolution
+      - name: Refuse forbidden changes
+        run: python -m tools.commit_guard
+      - name: Check Telegram configuration
+        id: telegram
+        run: |
+          if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Telegram secrets가 없어 전송 단계를 건너뜁니다."
+          fi
+      - name: Send report to Telegram
+        if: steps.telegram.outputs.configured == 'true'
+        run: python -m tools.send_latest_report
+      - name: Commit state
+        run: |
+          set -euo pipefail
+          git config user.name "aurio-range-bot"
+          git config user.email "bot@users.noreply.github.com"
+          # A successful evolution always writes both trees. Missing paths mean
+          # the run did not finish, so fail loudly instead of hiding it.
+          test -d evolution_state
+          test -d reports
+          git add evolution_state reports
+          if git diff --cached --quiet; then
+            echo "변경 없음"
+            exit 0
+          fi
+          git commit -m "chore: update evolution state"
+          git push

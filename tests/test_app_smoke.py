@@ -89,4 +89,5 @@ def test_no_delivery_happens_on_a_plain_rerun():
     assert not app.exception
     # A rerun must not produce a new report token or a new delivery.
     assert app.session_state["report_token"] == token
+    # SafeSessionState does not implement .get(); membership is supported.
     assert "auto_sent_token" not in app.session_state

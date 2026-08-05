@@ -5,11 +5,21 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 
+_TACTIC_ID_BY_FAMILY = {
+    "sender_forgery": "obvious-spoof",
+    "trusted_channel_abuse": "trusted-relay-abuse",
+    "incident_echo": "event-shadowing",
+    "support_impersonation": "trusted-relay-abuse",
+    "enforcement_notice": "obvious-spoof",
+}
+
+
 def build_scenario(
     account: Mapping[str, Any],
     difficulty: str,
     visual: Mapping[str, Any],
     triggered_event: Mapping[str, Any] | None = None,
+    strategy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return data only—never markup, styles, scripts, or executable strings."""
     if difficulty not in {"easy", "medium", "hard"}:
@@ -59,7 +69,29 @@ def build_scenario(
             "tactic_id": "event-shadowing",
         },
     }
-    chosen = definitions[difficulty]
+    chosen = dict(definitions[difficulty])
+    tactic_id = chosen["tactic_id"]
+    layout_variant = "shared"
+    if strategy:
+        # Only allowlisted, already-validated enum values may land here.
+        chosen["auth"] = str(strategy.get("sender_auth_level", chosen["auth"]))
+        chosen["signature"] = {
+            "valid": "valid", "invalid": "invalid", "none": "none",
+        }.get(str(strategy.get("signature_state", "none")), chosen["signature"])
+        chosen["ingress"] = str(
+            strategy.get("ingress_variant", chosen["ingress"])
+        )
+        chosen["urgency"] = str(
+            strategy.get("urgency_level", chosen["urgency"])
+        )
+        if str(strategy.get("destination_ownership_class")) == "registered":
+            chosen["destination"] = "official_alerts"
+        tactic_id = _TACTIC_ID_BY_FAMILY.get(
+            str(strategy.get("tactic_family", "")), tactic_id
+        )
+        # Layout stays the shared brandkit layout on purpose: official and
+        # forged artifacts must remain visually identical. The strategy's
+        # layout_variant only shapes the report and the schematic preview.
     return {
         "scenario_type": "forged_security_alert",
         "display_sender": f"{visual['brand_name']} 보안팀",
@@ -77,10 +109,10 @@ def build_scenario(
         "destination_identifier": chosen["destination"],
         "difficulty": difficulty,
         "tactics": {
-            "tactic_id": chosen["tactic_id"],
+            "tactic_id": tactic_id,
             "sender_auth_result": chosen["auth"],
             "signature_mode": chosen["signature"],
             "ingress_mode": chosen["ingress"],
-            "layout_variant": "shared",
+            "layout_variant": layout_variant,
         },
     }

@@ -51,6 +51,14 @@ _CREDENTIAL_PATTERN = re.compile(
     r"\s*[:=]\s*\S+",
     re.IGNORECASE,
 )
+_RUNTIME_SECRET_PATTERNS = (
+    re.compile(r"\b\d{6,}:[A-Za-z0-9_-]{30,}\b"),      # telegram bot token shape
+    re.compile(r"(?i)\bbot[0-9]{6,}:"),                  # token embedded in a path
+    re.compile(r"(?i)\b(?:owner_pin|admin_pin)\b\s*[:=]"),
+    re.compile(r"(?i)\b[A-Z_]*(?:TOKEN|SECRET|PASSWORD)\s*=\s*\S+"),
+    re.compile(r"(?m)^/(?:home|Users|root|mnt|var)/\S+"),  # absolute host paths
+)
+
 _ROW_ID_PATTERN = re.compile(
     r"\b(?:message_id|account_id|match_id|row_id|db_id)\s*[:=#]?\s*\d+",
     re.IGNORECASE,
@@ -116,11 +124,16 @@ def _violations(text: str) -> list[str]:
     if registry["signature_prefix"].lower() in lowered:
         found.append("서명 토큰")
     for tld in registry["forbidden_tlds"]:
-        if tld.lower() in lowered:
+        # A public TLD only matters when it terminates a hostname-like token.
+        if re.search(rf"[a-z0-9]{re.escape(tld)}\b", lowered):
             found.append(f"실제 TLD({tld})")
     for token in registry["forbidden_brand_tokens"]:
-        if token.lower() in lowered:
+        # Word boundaries: "line" is a brand, "lineage" is not.
+        if re.search(rf"\b{re.escape(token.lower())}\b", lowered):
             found.append(f"실제 서비스 이름({token})")
+    for secret in _RUNTIME_SECRET_PATTERNS:
+        if secret.search(text):
+            found.append("운영 비밀값")
     return found
 
 

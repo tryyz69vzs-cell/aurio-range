@@ -92,15 +92,14 @@ def test_auto_send_delivers_exactly_once_per_match():
     assert harness.sends == 1
 
 
-def test_every_chunk_is_transmitted_exactly_once():
+def test_summary_is_transmitted_exactly_once():
+    """The chat now carries one short summary; detail rides in the ZIP."""
     harness = _SessionHarness(auto_send=True)
     harness.run_match_click()
-    expected = build_telegram_messages(harness.report)
-    assert len(expected) >= 3
     sent = [payload["text"] for _, payload, _ in harness.transport.calls]
-    assert sent == expected
-    for message in expected:
-        assert sent.count(message) == 1
+    assert len(sent) == 1
+    assert sent.count(sent[0]) == 1
+    assert "Aurio Range 경기 완료" in sent[0]
 
 
 def test_manual_send_delivers_exactly_once_per_click():

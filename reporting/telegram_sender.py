@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Mapping
 
 from safety.constitution import TELEGRAM_ALLOWED_HOST as _POLICY_HOST
-from reporting.formatter import build_telegram_messages
+from reporting.formatter import build_telegram_summary
 from reporting.models import SafeRedReport
 from reporting.sanitizer import assert_report_is_clean, assert_text_is_clean
 
@@ -34,6 +34,8 @@ from reporting.sanitizer import assert_report_is_clean, assert_text_is_clean
 TELEGRAM_ALLOWED_HOST = _POLICY_HOST
 TELEGRAM_ALLOWED_SCHEME = "https"
 TELEGRAM_SEND_METHOD = "sendMessage"
+TELEGRAM_DOCUMENT_METHOD = "sendDocument"
+_MULTIPART_BOUNDARY = "AurioRangeReportBoundary7f3c1a"
 TIMEOUT_SECONDS = 8
 REDIRECT_CODES = frozenset({301, 302, 303, 307, 308})
 _SEPARATOR = "://"
@@ -134,11 +136,26 @@ def assert_allowed_endpoint(url: str) -> None:
         raise TelegramTransportError("승인되지 않은 전송 목적지입니다.")
 
 
-def _endpoint(credentials: TelegramCredentials) -> str:
+def _endpoint(credentials: TelegramCredentials, method: str) -> str:
     return (
         f"{TELEGRAM_ALLOWED_SCHEME}{_SEPARATOR}{_POLICY_HOST}"
-        f"/bot{credentials.bot_token}/{TELEGRAM_SEND_METHOD}"
+        f"/bot{credentials.bot_token}/{method}"
     )
+
+
+def _multipart(chat_id: str, filename: str, payload: bytes) -> tuple[bytes, str]:
+    """Build a minimal multipart/form-data body for sendDocument."""
+    boundary = _MULTIPART_BOUNDARY
+    head = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="chat_id"\r\n\r\n'
+        f"{chat_id}\r\n"
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="document"; filename="{filename}"\r\n'
+        f"Content-Type: application/zip\r\n\r\n"
+    ).encode("utf-8")
+    tail = f"\r\n--{boundary}--\r\n".encode("utf-8")
+    return head + payload + tail, f"multipart/form-data; boundary={boundary}"
 
 
 def _scrub(text: str, credentials: TelegramCredentials | None) -> str:
@@ -150,13 +167,21 @@ def _scrub(text: str, credentials: TelegramCredentials | None) -> str:
     return output
 
 
-def _https_post(url: str, payload: Mapping[str, Any], timeout: int) -> int:
+def _https_post(
+    url: str,
+    payload: Mapping[str, Any] | None = None,
+    timeout: int = TIMEOUT_SECONDS,
+    body: bytes | None = None,
+    content_type: str = "application/json; charset=utf-8",
+) -> int:
     """POST once. A redirect is a hard failure, never a second request."""
-    body = json.dumps(dict(payload), ensure_ascii=False).encode("utf-8")
+    data = body if body is not None else json.dumps(
+        dict(payload or {}), ensure_ascii=False
+    ).encode("utf-8")
     request = urllib.request.Request(
         url,
-        data=body,
-        headers={"Content-Type": "application/json; charset=utf-8"},
+        data=data,
+        headers={"Content-Type": content_type},
         method="POST",
     )
     try:
@@ -177,6 +202,84 @@ def _https_post(url: str, payload: Mapping[str, Any], timeout: int) -> int:
     return status
 
 
+@dataclass(frozen=True)
+class SafeReportBundle:
+    """In-memory, already-sanitized report archive. The only sendable file."""
+
+    filename: str
+    content: bytes
+    summary_text: str
+
+    def __post_init__(self) -> None:
+        if not self.filename.endswith(".zip"):
+            raise ValueError("보고서 번들 파일 이름이 올바르지 않습니다.")
+        if "/" in self.filename or "\\" in self.filename:
+            raise ValueError("보고서 번들 파일 이름에 경로를 넣을 수 없습니다.")
+        if not isinstance(self.content, (bytes, bytearray)):
+            raise TypeError("보고서 번들 내용은 메모리 바이트여야 합니다.")
+
+
+def send_report_bundle(
+    bundle: SafeReportBundle,
+    credentials: TelegramCredentials | None,
+    transport: Callable[..., Any] | None = None,
+    timeout: int = TIMEOUT_SECONDS,
+) -> TelegramSendResult:
+    """One sendMessage summary, then one sendDocument attachment. Never raises."""
+    if type(bundle) is not SafeReportBundle:
+        raise TypeError("SafeReportBundle 객체만 전송할 수 있습니다.")
+    if credentials is None:
+        return TelegramSendResult(
+            False, 0, 0, False, "missing_config",
+            "Telegram이 비활성화되어 있거나 설정이 없어 전송하지 않았습니다.",
+        )
+    try:
+        assert_text_is_clean(bundle.summary_text, "Telegram 요약")
+        assert_text_is_clean(bundle.filename, "보고서 파일 이름")
+        message_url = _endpoint(credentials, TELEGRAM_SEND_METHOD)
+        document_url = _endpoint(credentials, TELEGRAM_DOCUMENT_METHOD)
+        assert_allowed_endpoint(message_url)
+        assert_allowed_endpoint(document_url)
+    except TelegramTransportError as exc:
+        return TelegramSendResult(
+            False, 0, 0, False, "blocked", _scrub(str(exc), credentials)
+        )
+    except Exception as exc:
+        return TelegramSendResult(
+            False, 0, 0, False, "blocked",
+            _scrub(f"보고서 검증 실패: {exc}", credentials),
+        )
+
+    post = transport or _https_post
+    delivered = 0
+    try:
+        post(
+            message_url,
+            {
+                "chat_id": credentials.chat_id,
+                "text": bundle.summary_text,
+                "disable_web_page_preview": True,
+            },
+            timeout,
+        )
+        delivered += 1
+        body, content_type = _multipart(
+            credentials.chat_id, bundle.filename, bytes(bundle.content)
+        )
+        post(document_url, None, timeout, body, content_type)
+        delivered += 1
+    except Exception as exc:
+        return TelegramSendResult(
+            True, delivered, 2, False,
+            "failed" if delivered == 0 else "partial",
+            _scrub(f"전송 실패: {type(exc).__name__}", credentials),
+        )
+    return TelegramSendResult(
+        True, delivered, 2, True, "sent",
+        "요약 1건과 보고서 파일 1건을 전송했습니다.",
+    )
+
+
 def send_report(
     report: SafeRedReport,
     credentials: TelegramCredentials | None,
@@ -194,10 +297,10 @@ def send_report(
 
     try:
         assert_report_is_clean(report)
-        messages = build_telegram_messages(report)
+        messages = [build_telegram_summary(report, "")]
         for message in messages:
             assert_text_is_clean(message, "Telegram 메시지")
-        url = _endpoint(credentials)
+        url = _endpoint(credentials, TELEGRAM_SEND_METHOD)
         assert_allowed_endpoint(url)
     except TelegramTransportError as exc:
         return TelegramSendResult(

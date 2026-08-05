@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timezone
 from typing import Any
 
 import streamlit as st
 
 from engine.match import run_match
+from evolution.controller import run_evolution
+from evolution.models import EvolutionConfig, clamp_config
+from evolution.reporting import build_evolution_summary
+from reporting.bundle import build_bundle, build_markdown, build_metrics_csv, build_report_json
 from reporting.delivery import AUTO, MANUAL, plan_delivery
-from reporting.formatter import build_cards, summary_metrics
+from reporting.formatter import build_cards, build_telegram_summary, summary_metrics
 from reporting.red_report import build_red_report
 from reporting.telegram_sender import (
+    SafeReportBundle,
     build_credentials,
     owner_pin_configured,
-    send_report,
+    send_report_bundle,
     telegram_status,
     verify_owner_pin,
 )
@@ -128,7 +135,19 @@ REPORTING_BADGE = {
 def deliver_report(report, trigger: str) -> None:
     """Send once. A delivery problem may never break the match result."""
     try:
-        outcome = send_report(report, build_credentials(TELEGRAM_RAW))
+        bundle = st.session_state.get("report_bundle")
+        if bundle is None:
+            st.session_state["telegram_result"] = (
+                "blocked", "보고서 번들이 준비되지 않았습니다.",
+            )
+            return
+        filename, payload, generated_at = bundle
+        safe_bundle = SafeReportBundle(
+            filename, payload, build_telegram_summary(report, generated_at)
+        )
+        outcome = send_report_bundle(
+            safe_bundle, build_credentials(TELEGRAM_RAW)
+        )
         st.session_state["telegram_result"] = (outcome.status, outcome.detail)
     except Exception:
         st.session_state["telegram_result"] = (
@@ -221,6 +240,35 @@ with st.sidebar:
         width="stretch",
         disabled=not can_send or "red_report" not in st.session_state,
     )
+    st.markdown("#### Adaptive Red Lab")
+    evolution_on = st.checkbox("Adaptive Red 활성화", value=False)
+    gen_count = st.slider("세대 수", 1, 10, 3, disabled=not evolution_on)
+    pop_size = st.slider("세대당 후보", 2, 30, 8, disabled=not evolution_on)
+    train_seeds = st.slider("training seed 수", 1, 6, 2, disabled=not evolution_on)
+    eval_seeds = st.slider("hidden evaluation seed 수", 1, 6, 2,
+                           disabled=not evolution_on)
+    max_matches = st.slider("최대 경기 수", 10, 2000, 240, step=10,
+                            disabled=not evolution_on)
+    max_seconds = st.slider("최대 실행 시간(초)", 10, 900, 90, step=10,
+                            disabled=not evolution_on)
+    min_novelty = st.slider("최소 novelty", 0.0, 1.0, 0.05, step=0.01,
+                            disabled=not evolution_on)
+    min_repro = st.slider("최소 reproducibility", 0.0, 1.0, 0.5, step=0.05,
+                          disabled=not evolution_on)
+    evolve_clicked = st.button(
+        "Red 진화 실행", width="stretch", disabled=not safe or not evolution_on
+    )
+    best_run_clicked = st.button(
+        "현재 최고 전략으로 경기 실행",
+        width="stretch",
+        disabled=not safe or "evolution_outcome" not in st.session_state,
+    )
+    reset_clicked = st.button("진화 상태 초기화", width="stretch")
+    if reset_clicked:
+        for key in ("evolution_outcome", "evolution_summary"):
+            st.session_state.pop(key, None)
+        st.caption("진화 상태를 초기화했습니다.")
+
     result_state = st.session_state.get("telegram_result")
     if result_state:
         status_text, status_detail = result_state
@@ -236,9 +284,71 @@ if run_clicked:
             seed=int(seed_value) if fixed_seed else None,
         )
     st.session_state["match_result"] = match_result
-    st.session_state["red_report"] = build_red_report(match_result)
+    st.session_state["red_report"] = build_red_report(
+        match_result, st.session_state.get("evolution_summary")
+    )
     st.session_state["report_token"] = st.session_state.get("report_token", 0) + 1
     st.session_state.pop("telegram_result", None)
+    st.session_state.pop("report_bundle", None)
+    st.session_state.pop("bundle_error", None)
+    try:
+        generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        filename, payload = build_bundle(
+            match_result, st.session_state["red_report"]
+        )
+        st.session_state["report_bundle"] = (filename, payload, generated_at)
+    except Exception as error:
+        # A bundling problem must never fail the match itself.
+        st.session_state["bundle_error"] = str(error)[:300]
+
+if evolve_clicked:
+    with st.spinner("Adaptive Red 전략을 진화시키고 있습니다…"):
+        outcome = run_evolution(
+            clamp_config(
+                EvolutionConfig(
+                    generations=int(gen_count),
+                    population_size=int(pop_size),
+                    training_seed_count=int(train_seeds),
+                    evaluation_seed_count=int(eval_seeds),
+                    profiles=tuple(profiles),
+                    difficulty=difficulty_label.lower(),
+                    strictness=strictness,
+                    max_matches=int(max_matches),
+                    max_seconds=float(max_seconds),
+                    min_novelty=float(min_novelty),
+                    min_reproducibility=float(min_repro),
+                    base_seed=int(seed_value) if fixed_seed else 20260731,
+                )
+            )
+        )
+    st.session_state["evolution_outcome"] = outcome
+    st.session_state["evolution_summary"] = build_evolution_summary(outcome)
+
+if best_run_clicked and "evolution_outcome" in st.session_state:
+    outcome = st.session_state["evolution_outcome"]
+    with st.spinner("최고 전략으로 경기를 실행하고 있습니다…"):
+        match_result = run_match(
+            difficulty=difficulty_label.lower(),
+            strictness=strictness,
+            profiles=profiles,
+            seed=int(seed_value) if fixed_seed else None,
+            strategy=outcome.get("best_strategy_fields"),
+        )
+    st.session_state["match_result"] = match_result
+    st.session_state["red_report"] = build_red_report(
+        match_result, st.session_state.get("evolution_summary")
+    )
+    st.session_state["report_token"] = st.session_state.get("report_token", 0) + 1
+    st.session_state.pop("telegram_result", None)
+    st.session_state.pop("report_bundle", None)
+    try:
+        generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        filename, payload = build_bundle(
+            match_result, st.session_state["red_report"]
+        )
+        st.session_state["report_bundle"] = (filename, payload, generated_at)
+    except Exception as error:
+        st.session_state["bundle_error"] = str(error)[:300]
 
 trigger = AUTO if run_clicked else MANUAL if manual_send else None
 decision = plan_delivery(
@@ -340,6 +450,75 @@ with report_tab:
             cols = st.columns(2)
             for col, (label, value) in zip(cols, headline[start : start + 2]):
                 col.metric(label, value)
+
+        bundle = st.session_state.get("report_bundle")
+        st.markdown(
+            '<div class="section-label">REPORT DOWNLOADS</div>',
+            unsafe_allow_html=True,
+        )
+        if st.session_state.get("bundle_error"):
+            st.warning(
+                "보고서 번들 생성에 실패했습니다: "
+                f"{st.session_state['bundle_error']}"
+            )
+        generated_at = bundle[2] if bundle else ""
+        st.download_button(
+            "Markdown 보고서 다운로드",
+            data=build_markdown(report, generated_at).encode("utf-8"),
+            file_name=f"aurio-report-{report.summary.seed}.md",
+            mime="text/markdown",
+            width="stretch",
+        )
+        st.download_button(
+            "JSON 보고서 다운로드",
+            data=json.dumps(
+                build_report_json(report, generated_at),
+                ensure_ascii=False, indent=2,
+            ).encode("utf-8"),
+            file_name=f"aurio-report-{report.summary.seed}.json",
+            mime="application/json",
+            width="stretch",
+        )
+        st.download_button(
+            "CSV 지표 다운로드",
+            data=build_metrics_csv(report).encode("utf-8"),
+            file_name=f"aurio-metrics-{report.summary.seed}.csv",
+            mime="text/csv",
+            width="stretch",
+        )
+        if bundle:
+            st.download_button(
+                "전체 보고서 ZIP 다운로드",
+                data=bundle[1],
+                file_name=bundle[0],
+                mime="application/zip",
+                width="stretch",
+            )
+
+        if report.evolution is not None and report.evolution.enabled:
+            st.markdown(
+                '<div class="section-label">ADAPTIVE RED LINEAGE</div>',
+                unsafe_allow_html=True,
+            )
+            evo = report.evolution
+            cols = st.columns(2)
+            cols[0].metric("세대", evo.generations)
+            cols[1].metric("최고 평가 fitness", f"{evo.best_evaluation_fitness:.2f}")
+            for node in evo.lineage:
+                st.markdown(
+                    '<div class="rt-card">'
+                    f'<div class="rt-title">{node.strategy_id} · {node.keep_or_drop}</div>'
+                    f'<div class="rt-sub">gen {node.generation} · 부모 '
+                    f'{node.parent_strategy_id or "—"} · 변경 '
+                    f'{", ".join(node.changed_fields) or "—"}</div>'
+                    f'<div class="rt-item">훈련 {node.training_fitness:.2f} / '
+                    f'평가 {node.evaluation_fitness:.2f} '
+                    f'(Δ{node.delta_from_parent:+.2f})</div>'
+                    f'<div class="rt-item">{node.change_reason}</div>'
+                    f'<div class="rt-item">{node.user_behavior_summary}</div>'
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
 
         st.markdown(
             '<div class="section-label">ATTEMPT REPORTS</div>',

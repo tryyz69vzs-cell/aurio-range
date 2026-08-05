@@ -240,6 +240,30 @@ def _split_long(text: str, limit: int) -> list[str]:
     return chunks
 
 
+def build_telegram_summary(report: SafeRedReport, generated_at: str) -> str:
+    """The single short chat message that accompanies the report file."""
+    summary = report.summary
+    rows = [
+        "Aurio Range 경기 완료",
+        f"경기 시각: {generated_at}",
+        f"seed: {summary.seed}",
+        f"난이도/엄격도: {summary.difficulty_mix} / {summary.strictness}",
+        f"Red 점수: {summary.red_score:.0f}",
+        f"Blue 점수: {summary.blue_score:.0f}",
+        f"위조 시도: {summary.forged_attempts}",
+        f"격리: {summary.quarantined}",
+        f"경고: {summary.warned}",
+        f"허용: {summary.allowed}",
+        f"클릭: {summary.harm_click}",
+        f"제출: {summary.harm_submit}",
+        f"credential exposure: {summary.credential_exposure}",
+        f"takeover success: {summary.takeover_success}",
+        "",
+        "상세 내용은 첨부 보고서를 확인하세요.",
+    ]
+    return "\n".join(rows)
+
+
 def build_telegram_messages(report: SafeRedReport) -> list[str]:
     """Ordered parts: match summary, then each attempt, then the conclusions."""
     parts: list[str] = list(_split_long(_summary_block(report), TELEGRAM_MAX_CHARS))

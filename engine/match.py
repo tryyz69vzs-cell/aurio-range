@@ -527,6 +527,7 @@ def run_match(
     strictness: str = "balanced",
     profiles: list[str] | None = None,
     seed: int | None = None,
+    strategy: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Run one complete game in a new private in-memory SQLite database."""
     difficulty = difficulty.lower()
@@ -555,6 +556,7 @@ def run_match(
                 f"simulated-seed-{actual_seed}", "running",
             ),
         )
+        strategy_fields = dict(strategy) if strategy else None
         match_id = int(cursor.lastrowid)
         queue = EventQueue(connection, match_id)
         blue_repo = BlueRepo(connection, registry)
@@ -582,7 +584,8 @@ def run_match(
                         event.step_index,
                     )
                 red_structured = build_scenario(
-                    account, level, visual, placeholder
+                    account, level, visual, placeholder,
+                    strategy_fields,
                 )
                 valid, reason = validate_red_output(red_structured)
                 if not valid:
