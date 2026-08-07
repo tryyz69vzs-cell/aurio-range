@@ -168,6 +168,68 @@
     "training_fitness": 6.996346
   },
   {
+    "strategy_id": "g30-02-_follo",
+    "parent_strategy_id": "g29-11-_follo",
+    "root_strategy_id": "g0-seed-05-recovery_follo",
+    "generation": 30,
+    "origin_pattern": "recovery_followup",
+    "changed_fields": [
+      "header_variant"
+    ],
+    "previous_values": {
+      "header_variant": "wordmark"
+    },
+    "new_values": {
+      "header_variant": "wordmark_with_rule"
+    },
+    "mutation_reason": "`header_variant` 값을 바꿔 방어 반응 변화를 탐색 ('wordmark' → 'wordmark_with_rule')",
+    "fingerprint": "75fef042e8ed3d7c",
+    "fields": {
+      "tactic_family": "enforcement_notice",
+      "target_profile": "careless",
+      "claimed_event_type": "suspicious_login",
+      "objective_type": "credential_submission",
+      "sender_auth_level": "PASS",
+      "signature_state": "none",
+      "event_record_alignment": "unaligned",
+      "destination_ownership_class": "unregistered",
+      "ingress_variant": "internal_service",
+      "display_alignment_variant": "aligned",
+      "timing_variant": "with_official",
+      "delay_bucket": 1,
+      "notification_pairing": "unpaired",
+      "followup_style": "none",
+      "repetition_variant": 2,
+      "wording_variant_id": 1,
+      "subject_theme": "recovery_followup",
+      "opening_style": "support_greeting",
+      "evidence_style": "referenced_record",
+      "consequence_style": "access_restriction",
+      "reassurance_style": "support_contact",
+      "wording_tone": "calm_informative",
+      "urgency_level": "high",
+      "authority_level": "medium",
+      "sentence_count_band": "medium",
+      "paragraph_count_band": "short",
+      "semantic_sequence_variant": "evidence_first",
+      "personalization_level": "named_recipient",
+      "template_family": "alert_polished",
+      "layout_variant": "single_column_hero",
+      "header_variant": "wordmark_with_rule",
+      "CTA_variant": "primary_button",
+      "CTA_position": "below_instruction",
+      "visual_emphasis": "medium",
+      "information_density": "medium",
+      "mobile_layout": "stacked",
+      "detail_block_variant": "none",
+      "desired_user_action": "submit",
+      "warning_escape_target": true,
+      "verification_target": "neutral"
+    },
+    "evaluation_fitness": -4.623055,
+    "training_fitness": 6.958846
+  },
+  {
     "strategy_id": "g0-seed-03-account_securi",
     "parent_strategy_id": null,
     "root_strategy_id": "g0-seed-03-account_securi",
