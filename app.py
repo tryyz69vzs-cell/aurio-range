@@ -210,24 +210,31 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
     pin_ready = owner_pin_configured(TELEGRAM_RAW)
-    unlocked = False
+    unlocked = bool(st.session_state.get("owner_verified", False))
+
     if not pin_ready:
+        unlocked = False
+        st.session_state["owner_verified"] = False
         st.caption(
             "관리자 PIN이 설정되지 않아 전송이 잠겨 있습니다. "
             "st.secrets의 [telegram] owner_pin을 설정하면 열립니다."
         )
+    elif unlocked:
+        st.caption("✅ 관리자 인증됨 · 현재 브라우저 세션 동안 유지")
     else:
         pin_input = st.text_input(
             "관리자 PIN",
             type="password",
             key="owner_pin_input",
-            help="이 값은 세션 안에서만 사용되며 저장되지 않습니다.",
+            help="한 번 인증하면 현재 브라우저 세션 동안 다시 입력하지 않습니다.",
         )
-        unlocked = verify_owner_pin(TELEGRAM_RAW, pin_input)
-        if pin_input and not unlocked:
-            st.caption("PIN이 일치하지 않습니다.")
-        elif unlocked:
-            st.caption("관리자 확인됨.")
+        if pin_input:
+            if verify_owner_pin(TELEGRAM_RAW, pin_input):
+                st.session_state["owner_verified"] = True
+                st.rerun()
+            else:
+                st.caption("PIN이 일치하지 않습니다.")
+
     can_send = safe and unlocked and TELEGRAM_STATE == "active"
     auto_send = st.checkbox(
         "경기 종료 후 자동 전송",
