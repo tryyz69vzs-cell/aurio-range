@@ -222,5 +222,70 @@
     },
     "evaluation_fitness": -4.644095,
     "training_fitness": 6.921346
+  },
+  {
+    "strategy_id": "g2-00-iolati",
+    "parent_strategy_id": "g1-00-iolati",
+    "root_strategy_id": "g0-seed-07-policy_violati",
+    "generation": 2,
+    "origin_pattern": "policy_violation_notice",
+    "changed_fields": [
+      "paragraph_count_band",
+      "layout_variant"
+    ],
+    "previous_values": {
+      "paragraph_count_band": "short",
+      "layout_variant": "single_column_hero"
+    },
+    "new_values": {
+      "paragraph_count_band": "medium",
+      "layout_variant": "single_column_hero_evidence"
+    },
+    "mutation_reason": "`paragraph_count_band` 값을 바꿔 방어 반응 변화를 탐색 ('short' → 'medium'); `layout_variant` 값을 바꿔 방어 반응 변화를 탐색 ('single_column_hero' → 'single_column_hero_evidence')",
+    "fingerprint": "b7cb571c44dfdcc2",
+    "fields": {
+      "tactic_family": "enforcement_notice",
+      "target_profile": "careless",
+      "claimed_event_type": "suspicious_login",
+      "objective_type": "credential_submission",
+      "sender_auth_level": "PASS",
+      "signature_state": "none",
+      "event_record_alignment": "unaligned",
+      "destination_ownership_class": "unregistered",
+      "ingress_variant": "internal_service",
+      "display_alignment_variant": "aligned",
+      "timing_variant": "after_official",
+      "delay_bucket": 2,
+      "notification_pairing": "parallel_unrelated",
+      "followup_style": "none",
+      "repetition_variant": 1,
+      "wording_variant_id": 1,
+      "subject_theme": "policy_violation_notice",
+      "opening_style": "policy_reference",
+      "evidence_style": "referenced_record",
+      "consequence_style": "review_deadline",
+      "reassurance_style": "safety_note",
+      "wording_tone": "calm_informative",
+      "urgency_level": "low",
+      "authority_level": "high",
+      "sentence_count_band": "short",
+      "paragraph_count_band": "medium",
+      "semantic_sequence_variant": "evidence_first",
+      "personalization_level": "named_recipient",
+      "template_family": "alert_polished",
+      "layout_variant": "single_column_hero_evidence",
+      "header_variant": "wordmark",
+      "CTA_variant": "primary_button",
+      "CTA_position": "below_body",
+      "visual_emphasis": "medium",
+      "information_density": "long",
+      "mobile_layout": "stacked",
+      "detail_block_variant": "none",
+      "desired_user_action": "click",
+      "warning_escape_target": false,
+      "verification_target": "neutral"
+    },
+    "evaluation_fitness": -4.664956,
+    "training_fitness": 6.883846
   }
 ]
