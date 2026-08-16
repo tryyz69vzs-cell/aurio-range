@@ -279,7 +279,7 @@
     "previous_values": {},
     "new_values": {},
     "mutation_reason": "패턴 라이브러리 `recovery_followup` 의 구조적 특징을 careless 프로필에 투영한 초기 전략",
-    "novelty": 0.275,
+    "novelty": 0.25,
     "training_fitness": 7.108846,
     "evaluation_fitness": -4.537156,
     "delta_from_parent": -4.537156,
@@ -36850,5 +36850,1145 @@
     "drop_reason": "훈련 7.246 대비 평가 3.442 로 과적합",
     "promoted_to_hall_of_fame": false,
     "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `signature_state, mobile_layout` 필드를 바꿨고, 숨김 평가에서 -4.78 → -4.86 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 62,
+    "strategy_id": "g62-02-securi",
+    "parent_strategy_id": "g0-seed-03-account_securi",
+    "root_strategy_id": "g0-seed-03-account_securi",
+    "origin_pattern": "account_security_alert",
+    "changed_fields": [
+      "repetition_variant",
+      "notification_pairing"
+    ],
+    "previous_values": {
+      "repetition_variant": 1,
+      "notification_pairing": "parallel_unrelated"
+    },
+    "new_values": {
+      "repetition_variant": 2,
+      "notification_pairing": "shadowing"
+    },
+    "mutation_reason": "`repetition_variant` 값을 바꿔 방어 반응 변화를 탐색 (1 → 2); `notification_pairing` 값을 바꿔 방어 반응 변화를 탐색 ('parallel_unrelated' → 'shadowing')",
+    "novelty": 0.05,
+    "training_fitness": 7.059679,
+    "evaluation_fitness": -4.778945,
+    "delta_from_parent": -0.241789,
+    "training_breakdown": {
+      "total": 7.059679,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.426667,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.778945,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.401096
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.604384
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "official_event_record",
+      "signature_validity"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "훈련 7.060 대비 평가 3.457 로 과적합",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `repetition_variant, notification_pairing` 필드를 바꿨고, 숨김 평가에서 -4.54 → -4.78 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 62,
+    "strategy_id": "g62-03-securi",
+    "parent_strategy_id": "g0-seed-03-account_securi",
+    "root_strategy_id": "g0-seed-03-account_securi",
+    "origin_pattern": "account_security_alert",
+    "changed_fields": [
+      "signature_state"
+    ],
+    "previous_values": {
+      "signature_state": "none"
+    },
+    "new_values": {
+      "signature_state": "invalid"
+    },
+    "mutation_reason": "서명 상태를 바꿔 서명 신호 의존도를 탐색 ('none' → 'invalid')",
+    "novelty": 0.025,
+    "training_fitness": 7.059679,
+    "evaluation_fitness": -4.778945,
+    "delta_from_parent": -0.241789,
+    "training_breakdown": {
+      "total": 7.059679,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.426667,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.778945,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.401096
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.604384
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "signature_validity",
+        "official_event_record"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "signature_validity",
+        "official_event_record"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "signature_validity",
+      "official_event_record"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "novelty 0.025 < 기준 0.050",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `signature_state` 필드를 바꿨고, 숨김 평가에서 -4.54 → -4.78 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 62,
+    "strategy_id": "g62-04-_follo",
+    "parent_strategy_id": "g0-seed-05-recovery_follo",
+    "root_strategy_id": "g0-seed-05-recovery_follo",
+    "origin_pattern": "recovery_followup",
+    "changed_fields": [
+      "mobile_layout",
+      "information_density"
+    ],
+    "previous_values": {
+      "mobile_layout": "stacked",
+      "information_density": "medium"
+    },
+    "new_values": {
+      "mobile_layout": "compact",
+      "information_density": "long"
+    },
+    "mutation_reason": "`mobile_layout` 값을 바꿔 방어 반응 변화를 탐색 ('stacked' → 'compact'); 정보 밀도를 바꿔 사용자 판단 부담을 조정 ('medium' → 'long')",
+    "novelty": 0.05,
+    "training_fitness": 7.059679,
+    "evaluation_fitness": -4.778945,
+    "delta_from_parent": -0.241789,
+    "training_breakdown": {
+      "total": 7.059679,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.426667,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.778945,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.401096
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.604384
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "official_event_record",
+      "signature_validity"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "훈련 7.060 대비 평가 3.457 로 과적합",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `mobile_layout, information_density` 필드를 바꿨고, 숨김 평가에서 -4.54 → -4.78 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 62,
+    "strategy_id": "g62-05-_follo",
+    "parent_strategy_id": "g0-seed-05-recovery_follo",
+    "root_strategy_id": "g0-seed-05-recovery_follo",
+    "origin_pattern": "recovery_followup",
+    "changed_fields": [
+      "CTA_variant"
+    ],
+    "previous_values": {
+      "CTA_variant": "primary_button"
+    },
+    "new_values": {
+      "CTA_variant": "inline_link"
+    },
+    "mutation_reason": "`CTA_variant` 값을 바꿔 방어 반응 변화를 탐색 ('primary_button' → 'inline_link')",
+    "novelty": 0.025,
+    "training_fitness": 7.059679,
+    "evaluation_fitness": -4.778945,
+    "delta_from_parent": -0.241789,
+    "training_breakdown": {
+      "total": 7.059679,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.426667,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.778945,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.401096
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.604384
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "official_event_record",
+      "signature_validity"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "novelty 0.025 < 기준 0.050",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `CTA_variant` 필드를 바꿨고, 숨김 평가에서 -4.54 → -4.78 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 63,
+    "strategy_id": "g63-00-securi",
+    "parent_strategy_id": "g62-02-securi",
+    "root_strategy_id": "g0-seed-03-account_securi",
+    "origin_pattern": "account_security_alert",
+    "changed_fields": [
+      "followup_style"
+    ],
+    "previous_values": {
+      "followup_style": "none"
+    },
+    "new_values": {
+      "followup_style": "single_reminder"
+    },
+    "mutation_reason": "`followup_style` 값을 바꿔 방어 반응 변화를 탐색 ('none' → 'single_reminder')",
+    "novelty": 0.025,
+    "training_fitness": 7.273013,
+    "evaluation_fitness": -4.866781,
+    "delta_from_parent": -0.087836,
+    "training_breakdown": {
+      "total": 7.273013,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.64,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.866781,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.418663
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.674653
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "official_event_record",
+      "signature_validity"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "novelty 0.025 < 기준 0.050",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `followup_style` 필드를 바꿨고, 숨김 평가에서 -4.78 → -4.87 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 63,
+    "strategy_id": "g63-01-securi",
+    "parent_strategy_id": "g62-02-securi",
+    "root_strategy_id": "g0-seed-03-account_securi",
+    "origin_pattern": "account_security_alert",
+    "changed_fields": [
+      "signature_state",
+      "mobile_layout"
+    ],
+    "previous_values": {
+      "signature_state": "none",
+      "mobile_layout": "stacked"
+    },
+    "new_values": {
+      "signature_state": "invalid",
+      "mobile_layout": "compact"
+    },
+    "mutation_reason": "서명 상태를 바꿔 서명 신호 의존도를 탐색 ('none' → 'invalid'); `mobile_layout` 값을 바꿔 방어 반응 변화를 탐색 ('stacked' → 'compact')",
+    "novelty": 0.05,
+    "training_fitness": 7.273013,
+    "evaluation_fitness": -4.866781,
+    "delta_from_parent": -0.087836,
+    "training_breakdown": {
+      "total": 7.273013,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.64,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.866781,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.418663
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.674653
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "signature_validity",
+        "official_event_record"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "signature_validity",
+        "official_event_record"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "signature_validity",
+      "official_event_record"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "훈련 7.273 대비 평가 3.439 로 과적합",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `signature_state, mobile_layout` 필드를 바꿨고, 숨김 평가에서 -4.78 → -4.87 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 63,
+    "strategy_id": "g63-04-_follo",
+    "parent_strategy_id": "g62-04-_follo",
+    "root_strategy_id": "g0-seed-05-recovery_follo",
+    "origin_pattern": "recovery_followup",
+    "changed_fields": [
+      "reassurance_style"
+    ],
+    "previous_values": {
+      "reassurance_style": "support_contact"
+    },
+    "new_values": {
+      "reassurance_style": "none"
+    },
+    "mutation_reason": "`reassurance_style` 값을 바꿔 방어 반응 변화를 탐색 ('support_contact' → 'none')",
+    "novelty": 0.025,
+    "training_fitness": 7.273013,
+    "evaluation_fitness": -4.866781,
+    "delta_from_parent": -0.087836,
+    "training_breakdown": {
+      "total": 7.273013,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.64,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.866781,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.418663
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.674653
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "official_event_record",
+      "signature_validity"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "novelty 0.025 < 기준 0.050",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `reassurance_style` 필드를 바꿨고, 숨김 평가에서 -4.78 → -4.87 로 개선되지 못해 `drop` 판정을 받았습니다."
+  },
+  {
+    "generation": 63,
+    "strategy_id": "g63-05-_follo",
+    "parent_strategy_id": "g62-04-_follo",
+    "root_strategy_id": "g0-seed-05-recovery_follo",
+    "origin_pattern": "recovery_followup",
+    "changed_fields": [
+      "desired_user_action",
+      "evidence_style"
+    ],
+    "previous_values": {
+      "desired_user_action": "submit",
+      "evidence_style": "referenced_record"
+    },
+    "new_values": {
+      "desired_user_action": "ignore_warning",
+      "evidence_style": "device_summary"
+    },
+    "mutation_reason": "`desired_user_action` 값을 바꿔 방어 반응 변화를 탐색 ('submit' → 'ignore_warning'); `evidence_style` 값을 바꿔 방어 반응 변화를 탐색 ('referenced_record' → 'device_summary')",
+    "novelty": 0.05,
+    "training_fitness": 7.273013,
+    "evaluation_fitness": -4.866781,
+    "delta_from_parent": -0.087836,
+    "training_breakdown": {
+      "total": 7.273013,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.266667,
+        "user_click": 0.2,
+        "user_submit": 0.333333,
+        "credential_exposure": 0.433333,
+        "takeover_success": 0.566667,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.738462,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 1.115385,
+        "lineage_diversity": 0.64,
+        "safety_compliance": 1.0
+      },
+      "penalties": {}
+    },
+    "evaluation_breakdown": {
+      "total": -4.866781,
+      "components": {
+        "pre_delivery_escape": 0.333333,
+        "warn_reached": 0.2,
+        "warning_escape": 0.088889,
+        "user_click": 0.066667,
+        "user_submit": 0.111111,
+        "credential_exposure": 0.144444,
+        "takeover_success": 0.188889,
+        "official_event_signal_neutralized": 0.333333,
+        "blue_failure_discovery": 0.0,
+        "profile_coverage": 0.568421,
+        "difficulty_coverage": 1.0,
+        "novelty": 0.1125,
+        "reproducibility": 0.710526,
+        "lineage_diversity": 0.0,
+        "safety_compliance": 1.0,
+        "evaluation_generalization": -1.418663
+      },
+      "penalties": {
+        "training_seed_overfit": -2.631579,
+        "evaluation_regression": -5.674653
+      }
+    },
+    "raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 3,
+      "user_click": 3,
+      "user_submit": 3,
+      "credential_exposure": 3,
+      "takeover_success": 3,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        24.5,
+        14.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 13.0,
+        "careless": 23.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회"
+    },
+    "evaluation_raw_metrics": {
+      "matches": 2,
+      "attempts": 18,
+      "pre_delivery_escape": 6,
+      "warn_reached": 6,
+      "warning_escape": 1,
+      "user_click": 1,
+      "user_submit": 1,
+      "credential_exposure": 1,
+      "takeover_success": 1,
+      "official_event_signal_neutralized": 6,
+      "blue_failure_discovery": 0,
+      "profiles_covered": 3,
+      "difficulties_covered": 3,
+      "per_seed_scores": [
+        14.5,
+        4.5
+      ],
+      "per_profile_scores": {
+        "cautious": 3.0,
+        "average": 3.0,
+        "careless": 13.0
+      },
+      "top_blue_signals": [
+        "destination_ownership",
+        "official_event_record",
+        "signature_validity"
+      ],
+      "user_behavior_summary": "검증 12회, 신고 3회, 클릭 1회, 제출 1회"
+    },
+    "top_detected_blue_signals": [
+      "destination_ownership",
+      "official_event_record",
+      "signature_validity"
+    ],
+    "user_behavior_summary": "검증 8회, 신고 2회, 클릭 3회, 제출 3회",
+    "safety_validation": {
+      "passed": true,
+      "detail": "통과"
+    },
+    "keep_or_drop": "drop",
+    "drop_reason": "훈련 7.273 대비 평가 3.439 로 과적합",
+    "promoted_to_hall_of_fame": false,
+    "narrative": "부모 전략은 클릭 3회, 제출 3회를 기록했습니다. 자식 전략은 `desired_user_action, evidence_style` 필드를 바꿨고, 숨김 평가에서 -4.78 → -4.87 로 개선되지 못해 `drop` 판정을 받았습니다."
   }
 ]
