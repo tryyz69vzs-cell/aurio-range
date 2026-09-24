@@ -1,8 +1,8 @@
 {
-  "runs": 57,
-  "generation": 178,
+  "runs": 58,
+  "generation": 181,
   "last_best_strategy_id": "g0-seed-02-event_shadowin",
   "last_best_evaluation_fitness": -4.515261,
-  "last_run_at": "2026-09-23T22:19:58Z",
+  "last_run_at": "2026-09-24T22:25:45Z",
   "stop_reason": "정상 종료"
 }
